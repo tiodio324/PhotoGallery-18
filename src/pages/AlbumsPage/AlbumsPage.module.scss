@@ -1,0 +1,15 @@
+@use '@/styles/globalColors' as *;
+
+.page { padding: 1.5rem; }
+.header { margin-bottom: 1.5rem; }
+.title { font-size: 1.75rem; font-weight: 700; color: $color-text-primary; margin: 0 0 0.25rem; }
+.subtitle { font-size: 0.9rem; color: $color-text-muted; margin: 0; }
+
+.albumsGrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1.5rem; }
+.albumCard { overflow: hidden; cursor: pointer; }
+.albumCover { height: 200px; background-size: cover; background-position: center; display: flex; align-items: center; justify-content: center; }
+.placeholder { font-size: 4rem; opacity: 0.3; }
+.albumInfo { padding: 1rem; display: flex; flex-direction: column; gap: 0.5rem; }
+.albumName { font-size: 1.1rem; font-weight: 600; color: $color-text-primary; margin: 0; }
+.albumDesc { font-size: 0.9rem; color: $color-text-muted; margin: 0; }
+.empty { grid-column: 1 / -1; text-align: center; color: $color-text-muted; padding: 3rem; }

@@ -1,0 +1,67 @@
+@use '@/styles/globalColors' as *;
+@use '@/styles/variables' as *;
+@use '@/styles/mixins' as *;
+
+// Photo-Gallery: Минималистичный черно-белый (галерейный стиль)
+.form {
+  @include flex-column;
+  gap: $spacing-xl;
+}
+
+.roleSelector {
+  display: flex;
+  gap: $spacing-xl;
+  justify-content: center;
+  
+  @media (max-width: 420px) {
+    flex-direction: column;
+    align-items: center;
+  }
+}
+
+.roleButton {
+  @include flex-column;
+  @include flex-center;
+  gap: $spacing-sm;
+  padding: $spacing-lg;
+  background: transparent;
+  border: 1px solid $color-text-primary;
+  border-radius: 0;
+  cursor: pointer;
+  transition: all $transition-fast;
+  min-width: 120px;
+  
+  svg {
+    width: 32px;
+    height: 32px;
+    color: $color-text-primary;
+    transition: all $transition-fast;
+  }
+  
+  span {
+    font-size: $font-size-xs;
+    font-weight: $font-weight-regular;
+    color: $color-text-primary;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+  }
+  
+  &:hover {
+    background: $color-text-primary;
+    
+    svg { color: $color-bg-primary; }
+    span { color: $color-bg-primary; }
+  }
+  
+  &.active {
+    background: $color-text-primary;
+    
+    svg { color: $color-bg-primary; }
+    span { color: $color-bg-primary; font-weight: $font-weight-medium; }
+  }
+}
+
+.actions {
+  @include flex-center;
+  gap: $spacing-lg;
+}

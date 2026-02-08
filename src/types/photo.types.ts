@@ -1,0 +1,2 @@
+export interface Photo { id: string; title: string; description?: string; imageUrl: string; thumbnailUrl?: string; albumId: string; tags: string[]; watermark: boolean; copyright: string; views: number; downloads: number; isActive: boolean; createdAt: string; updatedAt: string; }
+export interface PhotoFormData { title: string; description?: string; imageUrl: string; thumbnailUrl?: string; albumId: string; tags: string[]; watermark: boolean; copyright: string; }

@@ -1,0 +1,177 @@
+@use '@/styles/globalColors' as *;
+@use '@/styles/variables' as *;
+@use '@/styles/mixins' as *;
+
+// Photo-Gallery: Минималистичный галерейный brutalist стиль
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-2xl;
+}
+
+.welcome {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: $spacing-xl;
+  padding: $spacing-2xl;
+  background: $color-text-primary;
+  color: $color-bg-primary;
+  position: relative;
+  
+  @include mobile {
+    flex-direction: column;
+    text-align: center;
+    padding: $spacing-xl;
+  }
+}
+
+.welcomeContent {
+  position: relative;
+  z-index: 1;
+  max-width: 600px;
+}
+
+.welcomeTitle {
+  font-family: $font-family-primary;
+  font-size: $font-size-3xl;
+  font-weight: $font-weight-bold;
+  margin: 0 0 $spacing-md;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  
+  @include mobile { font-size: $font-size-2xl; }
+}
+
+.welcomeText {
+  font-size: $font-size-base;
+  color: $color-bg-primary;
+  margin: 0 0 $spacing-lg;
+  line-height: $line-height-relaxed;
+  opacity: 0.8;
+}
+
+.welcomeDecor {
+  width: 120px;
+  height: 120px;
+  color: $color-bg-primary;
+  opacity: 0.3;
+  
+  @include mobile { display: none; }
+}
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0;
+  border: 1px solid $color-text-primary;
+  
+  @include tablet { grid-template-columns: repeat(2, 1fr); }
+  @include mobile { grid-template-columns: 1fr; }
+}
+
+.statCard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: $spacing-xs;
+  padding: $spacing-xl !important;
+  background: $color-bg-primary !important;
+  border: none !important;
+  border-right: 1px solid $color-text-primary !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  
+  &:last-child { border-right: none !important; }
+  
+  @include tablet {
+    &:nth-child(2n) { border-right: none !important; }
+    border-bottom: 1px solid $color-text-primary !important;
+  }
+  
+  @include mobile {
+    border-right: none !important;
+    border-bottom: 1px solid $color-text-primary !important;
+    &:last-child { border-bottom: none !important; }
+  }
+}
+
+.statIcon { display: none; }
+
+.statContent {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.statValue {
+  font-family: $font-family-primary;
+  font-size: $font-size-4xl;
+  font-weight: $font-weight-bold;
+  color: $color-text-primary;
+}
+
+.statTitle {
+  font-size: $font-size-xs;
+  color: $color-text-muted;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+}
+
+.sectionTitle {
+  font-family: $font-family-primary;
+  font-size: $font-size-xs;
+  font-weight: $font-weight-medium;
+  margin: 0 0 $spacing-lg;
+  text-transform: uppercase;
+  letter-spacing: 3px;
+  color: $color-text-muted;
+}
+
+.actionCards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: $spacing-md;
+}
+
+.actionCard {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: $spacing-sm;
+  padding: $spacing-xl !important;
+  background: $color-bg-primary !important;
+  border: 1px solid $color-text-primary !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  transition: all $transition-fast;
+  
+  &:hover {
+    background: $color-text-primary !important;
+    color: $color-bg-primary;
+    transform: translate(-4px, -4px);
+    box-shadow: 8px 8px 0 $color-text-primary !important;
+    
+    h3, p { color: $color-bg-primary; }
+    .actionIcon { color: $color-bg-primary; border-color: $color-bg-primary; }
+  }
+  
+  h3 { font-size: $font-size-base; font-weight: $font-weight-medium; color: $color-text-primary; margin: 0; text-transform: uppercase; letter-spacing: 1px; }
+  p { font-size: $font-size-sm; color: $color-text-muted; margin: 0; }
+}
+
+.actionIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  background: transparent;
+  border: 1px solid $color-text-primary;
+  border-radius: 0;
+  color: $color-text-primary;
+  margin-bottom: $spacing-sm;
+  
+  svg { width: 24px; height: 24px; }
+}

@@ -1,0 +1,58 @@
+@use '@/styles/globalColors' as *;
+@use '@/styles/variables' as *;
+@use '@/styles/mixins' as *;
+
+// Photo-Gallery: Минималистичный галерейный стиль
+.card {
+  display: flex;
+  flex-direction: column;
+  background: $color-bg-primary;
+  border-radius: 0;
+  border: 1px solid $color-text-primary;
+  overflow: hidden;
+  transition: all $transition-fast;
+}
+
+.default { background: $color-bg-primary; }
+.outlined { 
+  background: transparent;
+  border: 1px solid $color-text-primary;
+}
+.elevated { 
+  background: $color-bg-primary; 
+  box-shadow: 8px 8px 0 $color-text-primary;
+}
+
+.padding-none .content { padding: 0; }
+.padding-sm .content { padding: $spacing-sm; }
+.padding-md .content { padding: $spacing-md; }
+.padding-lg .content { padding: $spacing-lg; }
+
+.hoverable {
+  cursor: pointer;
+  
+  &:hover {
+    transform: translate(-4px, -4px);
+    box-shadow: 8px 8px 0 $color-text-primary;
+  }
+}
+
+.header {
+  padding: $spacing-md;
+  border-bottom: 1px solid $color-text-primary;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  font-size: $font-size-xs;
+  
+  &:empty { display: none; }
+}
+
+.content { flex: 1; }
+
+.footer {
+  padding: $spacing-md;
+  background: $color-text-primary;
+  color: $color-bg-primary;
+  
+  &:empty { display: none; }
+}
