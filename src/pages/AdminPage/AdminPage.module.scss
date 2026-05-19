@@ -13,3 +13,33 @@
 .form { display: flex; flex-direction: column; gap: 1rem; }
 .checkboxRow { display: flex; align-items: center; gap: 0.5rem; }
 .modalFooter { display: flex; justify-content: flex-end; gap: 0.75rem; }
+
+.imagePickField {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+.imagePickLabel {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: $color-text-primary;
+}
+.imagePickRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+}
+.imagePickHidden { position: absolute; width: 0; height: 0; opacity: 0; pointer-events: none; }
+.imagePickPreview {
+  width: 72px;
+  height: 72px;
+  border-radius: 0.375rem;
+  object-fit: cover;
+  border: 1px solid $color-border-primary;
+  background: $color-bg-secondary;
+}
+.imagePickHint {
+  font-size: 0.75rem;
+  color: $color-text-muted;
+}

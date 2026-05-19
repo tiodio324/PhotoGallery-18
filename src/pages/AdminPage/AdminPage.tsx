@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { observer } from 'mobx-react-lite';
 import { dataStore, uiStore, authStore } from '@/store';
 import { Card, Button, Table, Modal, Input, Select } from '@/components/UI';
+import { readFileAsDataUrl, MAX_PHOTO_FILE_BYTES } from '@/utils';
 import type { TableColumn } from '@/components/UI';
 import type { Photo, Album, PhotoFormData, AlbumFormData, SelectOption } from '@/types';
 import styles from './AdminPage.module.scss';
@@ -15,15 +16,38 @@ export const AdminPage = observer(() => {
   const [modalOpen, setModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<'create' | 'edit'>('create');
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [photoForm, setPhotoForm] = useState<PhotoFormData>({ title: '', description: '', imageUrl: '', albumId: '', tags: [], watermark: false, copyright: '' });
+  const [photoForm, setPhotoForm] = useState<PhotoFormData>({ title: '', description: '', imageUrl: '', thumbnailUrl: '', albumId: '', tags: [], watermark: false, copyright: '' });
   const [albumForm, setAlbumForm] = useState<AlbumFormData>({ name: '', description: '', isPublic: true });
+  const imageFileRef = useRef<HTMLInputElement>(null);
+  const thumbnailFileRef = useRef<HTMLInputElement>(null);
 
   const albumOptions: SelectOption[] = [
     { value: '', label: 'Без альбома' },
     ...activeAlbums.map(a => ({ value: a.id, label: a.name })),
   ];
 
-  const resetForms = () => { setPhotoForm({ title: '', description: '', imageUrl: '', albumId: '', tags: [], watermark: false, copyright: '' }); setAlbumForm({ name: '', description: '', isPublic: true }); setEditingId(null); };
+  const resetForms = () => {
+    setPhotoForm({ title: '', description: '', imageUrl: '', thumbnailUrl: '', albumId: '', tags: [], watermark: false, copyright: '' });
+    setAlbumForm({ name: '', description: '', isPublic: true });
+    setEditingId(null);
+    if (imageFileRef.current) imageFileRef.current.value = '';
+    if (thumbnailFileRef.current) thumbnailFileRef.current.value = '';
+  };
+
+  const handleImageFile = async (file: File | undefined, kind: 'image' | 'thumbnail') => {
+    if (!file || !file.type.startsWith('image/')) return;
+    if (file.size > MAX_PHOTO_FILE_BYTES) {
+      uiStore.showError(`Файл больше ${MAX_PHOTO_FILE_BYTES / (1024 * 1024)} МБ`);
+      return;
+    }
+    try {
+      const dataUrl = await readFileAsDataUrl(file);
+      if (kind === 'image') setPhotoForm(prev => ({ ...prev, imageUrl: dataUrl }));
+      else setPhotoForm(prev => ({ ...prev, thumbnailUrl: dataUrl }));
+    } catch {
+      uiStore.showError('Не удалось прочитать изображение');
+    }
+  };
   const openCreateModal = () => { resetForms(); setModalMode('create'); setModalOpen(true); };
   const openEditModal = (item: Photo | Album) => {
     setModalMode('edit'); setEditingId(item.id);
@@ -93,8 +117,23 @@ export const AdminPage = observer(() => {
           {activeTab === 'photos' && (<>
             <Input label="Название *" value={photoForm.title} onChange={e => { const v = e.target.value; setPhotoForm(prev => ({ ...prev, title: v })); }} />
             <Input label="Описание" value={photoForm.description || ''} onChange={e => { const v = e.target.value; setPhotoForm(prev => ({ ...prev, description: v })); }} />
-            <Input label="URL изображения *" value={photoForm.imageUrl} onChange={e => { const v = e.target.value; setPhotoForm(prev => ({ ...prev, imageUrl: v })); }} />
-            <Input label="URL миниатюры" value={photoForm.thumbnailUrl || ''} onChange={e => { const v = e.target.value; setPhotoForm(prev => ({ ...prev, thumbnailUrl: v })); }} />
+            <div className={styles.imagePickField}>
+              <span className={styles.imagePickLabel}>Изображение *</span>
+              <div className={styles.imagePickRow}>
+                <input ref={imageFileRef} type="file" accept="image/*" className={styles.imagePickHidden} aria-hidden onChange={e => { void handleImageFile(e.target.files?.[0], 'image'); e.target.value = ''; }} />
+                <Button type="button" variant="secondary" onClick={() => imageFileRef.current?.click()}>Выбрать</Button>
+                {photoForm.imageUrl ? <img src={photoForm.imageUrl} alt="" className={styles.imagePickPreview} /> : <span className={styles.imagePickHint}>Файл не выбран</span>}
+              </div>
+              <span className={styles.imagePickHint}>Сохраняется в Firebase как строка (data URL)</span>
+            </div>
+            <div className={styles.imagePickField}>
+              <span className={styles.imagePickLabel}>Миниатюра</span>
+              <div className={styles.imagePickRow}>
+                <input ref={thumbnailFileRef} type="file" accept="image/*" className={styles.imagePickHidden} aria-hidden onChange={e => { void handleImageFile(e.target.files?.[0], 'thumbnail'); e.target.value = ''; }} />
+                <Button type="button" variant="secondary" onClick={() => thumbnailFileRef.current?.click()}>Выбрать</Button>
+                {photoForm.thumbnailUrl ? (<><img src={photoForm.thumbnailUrl} alt="" className={styles.imagePickPreview} /><Button type="button" variant="ghost" size="sm" onClick={() => setPhotoForm(prev => ({ ...prev, thumbnailUrl: '' }))}>Убрать</Button></>) : <span className={styles.imagePickHint}>Необязательно</span>}
+              </div>
+            </div>
             <Select label="Альбом" options={albumOptions} value={photoForm.albumId} placeholder="" onChange={e => { const v = e.target.value; setPhotoForm(prev => ({ ...prev, albumId: v })); }} />
             <Input label="Авторские права" value={photoForm.copyright} onChange={e => { const v = e.target.value; setPhotoForm(prev => ({ ...prev, copyright: v })); }} />
             <div className={styles.checkboxRow}><input type="checkbox" checked={photoForm.watermark} onChange={e => { const v = e.target.checked; setPhotoForm(prev => ({ ...prev, watermark: v })); }} id="watermark" /><label htmlFor="watermark">Водяной знак</label></div>
