@@ -124,7 +124,6 @@ export const AdminPage = observer(() => {
                 <Button type="button" variant="secondary" onClick={() => imageFileRef.current?.click()}>Выбрать</Button>
                 {photoForm.imageUrl ? <img src={photoForm.imageUrl} alt="" className={styles.imagePickPreview} /> : <span className={styles.imagePickHint}>Файл не выбран</span>}
               </div>
-              <span className={styles.imagePickHint}>Сохраняется в Firebase как строка (data URL)</span>
             </div>
             <div className={styles.imagePickField}>
               <span className={styles.imagePickLabel}>Миниатюра</span>
