@@ -3,17 +3,15 @@
 @use '@/styles/mixins' as *;
 
 .overlay {
-  display: none;
-  
+  // Убрали display: none, так как рендером управляет React
   @include mobile-tablet {
-    display: block;
     position: fixed;
     top: $header-height;
     left: 0;
     right: 0;
     bottom: 0;
-    background: rgba(0, 0, 0, 0.8);
-    z-index: $z-modal-backdrop - 1;
+    background: rgba(0, 0, 0, 0.6); // Немного мягче, чем 0.8
+    z-index: $z-fixed + 10; // Оверлей ложится поверх контента, но ниже сайдбара
   }
 }
 
@@ -32,8 +30,10 @@
   overflow: hidden;
   
   @include mobile-tablet {
-    transform: translateX(-100%);
+    width: 280px; // Четко фиксируем удобную ширину меню для смартфонов
+    transform: translateX(-100%); // Полностью прячем за левый край
     box-shadow: none;
+    z-index: $z-fixed + 20; // Сайдбар гарантированно выше оверлея
   }
 }
 
@@ -44,25 +44,45 @@
 .collapsed {
   width: $sidebar-collapsed-width;
   
+  // Отключаем десктопное сворачивание на мобильных экранах
+  @include mobile-tablet {
+    width: 280px; 
+  }
+  
   .label {
     opacity: 0;
     width: 0;
+    
+    @include mobile-tablet {
+      opacity: 1;
+      width: auto;
+    }
   }
   
   .navItem {
     justify-content: center;
     padding: $spacing-md;
+    
+    @include mobile-tablet {
+      justify-content: flex-start;
+      padding: $spacing-md $spacing-lg;
+    }
   }
   
   .footer {
     opacity: 0;
+    
+    @include mobile-tablet {
+      opacity: 1;
+    }
   }
 }
 
+// Класс, который добавляется при mobileMenuOpen === true
 .mobileOpen {
   @include mobile-tablet {
-    transform: translateX(0);
-    box-shadow: $shadow-xl;
+    transform: translateX(0) !important; // Выкатываем меню слева
+    box-shadow: $shadow-xl; // Добавляем красивую тень
   }
 }
 
@@ -86,7 +106,7 @@
   @include flex-start;
   gap: $spacing-md;
   width: 100%;
-  padding: 0;
+  padding: $spacing-sm $spacing-md; // Добавили паддинг для удобного нажатия пальцем
   background: transparent;
   border: none;
   border-radius: 0;
