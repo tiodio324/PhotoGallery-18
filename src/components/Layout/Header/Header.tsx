@@ -10,7 +10,7 @@ export const Header = observer(() => {
   const getRoleName = (role: string): string => {
     switch (role) {
       case 'admin': return 'Администратор';
-      case 'teacher': return 'Преподаватель';
+      case 'photographer': return 'Фотограф';
       default: return 'Гость';
     }
   };
