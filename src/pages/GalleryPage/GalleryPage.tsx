@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { observer } from 'mobx-react-lite';
 import { dataStore, authStore } from '@/store';
 import { Card, Input, Badge, Modal } from '@/components/UI';
@@ -9,34 +9,6 @@ export const GalleryPage = observer(() => {
   const { filteredPhotos, getAlbumById, incrementViews, incrementDownloads, setFilter, filters } = dataStore;
   const { canDownloadPhotos } = authStore;
   const [selectedPhoto, setSelectedPhoto] = useState<Photo | null>(null);
-  const [isBlurred, setIsBlurred] = useState(false);
-
-  useEffect(() => {
-    if (canDownloadPhotos()) return;
-
-    const handleBlur = () => setIsBlurred(true);
-    const handleFocus = () => setIsBlurred(false);
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (
-        e.key === 'F12' || 
-        (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'i' || e.key === 'C' || e.key === 'c' || e.key === 'J' || e.key === 'j')) ||
-        (e.ctrlKey && (e.key === 'U' || e.key === 'u' || e.key === 'S' || e.key === 's' || e.key === 'P' || e.key === 'p'))
-      ) {
-        e.preventDefault();
-      }
-    };
-
-    window.addEventListener('blur', handleBlur);
-    window.addEventListener('focus', handleFocus);
-    window.addEventListener('keydown', handleKeyDown);
-
-    return () => {
-      window.removeEventListener('blur', handleBlur);
-      window.removeEventListener('focus', handleFocus);
-      window.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [canDownloadPhotos, selectedPhoto]);
 
   const handlePhotoClick = (photo: Photo) => {
     setSelectedPhoto(photo);
@@ -46,13 +18,18 @@ export const GalleryPage = observer(() => {
   const handleDownload = (photo: Photo) => {
     if (canDownloadPhotos()) {
       incrementDownloads(photo.id);
-      // Если у фотографа есть права, скачиваем чистый оригинал, сохраненный в поле copyright.
-      // Если фото старое и оригинала там нет (загружалось до настройки), скачается обычный imageUrl.
+      
+      // Скачиваем оригинал, если он сохранен в copyright, иначе обычный файл
       const downloadUrl = (photo.watermark && photo.copyright && photo.copyright.startsWith('data:image')) 
         ? photo.copyright 
         : photo.imageUrl;
         
-      window.open(downloadUrl, '_blank');
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.download = photo.title || 'photo';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
     }
   };
 
@@ -66,7 +43,6 @@ export const GalleryPage = observer(() => {
     <div className={styles.page}>
       {!canDownloadPhotos() && (
         <style>{`
-          @media print { body { display: none !important; } }
           .no-screenshot { user-select: none !important; -webkit-user-select: none !important; }
         `}</style>
       )}
@@ -80,16 +56,15 @@ export const GalleryPage = observer(() => {
       </Card>
 
       {selectedPhoto ? (
-        <Modal isOpen={!!selectedPhoto} onClose={() => { setSelectedPhoto(null); setIsBlurred(false); }} title={selectedPhoto.title} size="lg">
+        <Modal isOpen={!!selectedPhoto} onClose={() => setSelectedPhoto(null)} title={selectedPhoto.title} size="lg">
           <div className={styles.photoViewer}>
             
             <div 
               onContextMenu={preventActions}
               onDragStart={preventActions}
               className="no-screenshot"
-              style={{ position: 'relative', display: 'inline-block', overflow: 'hidden', background: '#141414' }}
+              style={{ position: 'relative', display: 'inline-block' }}
             >
-              {/* Все пользователи и фотографы видят фото с вшитой вотермаркой на экране */}
               <img 
                 src={selectedPhoto.imageUrl} 
                 alt={selectedPhoto.title} 
@@ -104,6 +79,7 @@ export const GalleryPage = observer(() => {
                 }}
               />
 
+              {/* Невидимый прозрачный щит поверх фото для гостей */}
               {!canDownloadPhotos() && (
                 <div
                   onContextMenu={preventActions}
@@ -121,7 +97,7 @@ export const GalleryPage = observer(() => {
             <div className={styles.photoMeta}>
               <span>👁 {selectedPhoto.views}</span>
               <span>⬇ {selectedPhoto.downloads}</span>
-              {/* Показываем копирайт текстом, только если это обычная строка автора, а не скрытый оригинал */}
+              {/* Показываем копирайт только если это обычный текст, а не закодированная картинка */}
               {selectedPhoto.copyright && !selectedPhoto.copyright.startsWith('data:image') && (
                 <span>© {selectedPhoto.copyright}</span>
               )}
@@ -162,4 +138,5 @@ export const GalleryPage = observer(() => {
       )}
     </div>
   );
+});
 });
