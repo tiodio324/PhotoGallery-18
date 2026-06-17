@@ -84,7 +84,7 @@ export const AdminPage = observer(() => {
   };
 
   // Возвращаем функцию к исходному простому и быстрому чтению файла без условий
-  const handleImageFile = async (file: File | undefined, kind: 'image' | 'thumbnail') => {
+ const handleImageFile = async (file: File | undefined, kind: 'image' | 'thumbnail') => {
     if (!file || !file.type.startsWith('image/')) return;
     if (file.size > MAX_PHOTO_FILE_BYTES) {
       uiStore.showError(`Файл больше ${MAX_PHOTO_FILE_BYTES / (1024 * 1024)} МБ`);
@@ -92,12 +92,33 @@ export const AdminPage = observer(() => {
     }
     try {
       const dataUrl = await readFileAsDataUrl(file);
-      if (kind === 'image') setPhotoForm(prev => ({ ...prev, imageUrl: dataUrl }));
-      else setPhotoForm(prev => ({ ...prev, thumbnailUrl: dataUrl }));
+      
+      if (kind === 'image') {
+        // Показываем лоадер, пока Canvas обрабатывает тяжелую картинку
+        uiStore.showSuccess('Обработка водяного знака...');
+        
+        // В ФОНЕ ГЕНЕРИРУЕМ ВЕРСИЮ С ВОТЕРМАРКОЙ (Поменяйте 'ФОТОГАЛЕРЕЯ' на свое название)
+        const watermarkedUrl = await applyWatermarkToDataUrl(dataUrl, 'ФОТОГАЛЕРЕЯ');
+
+        // imageUrl временно хранит чистый оригинал для предпросмотра, 
+        // а в copyright мы временно прячем готовую вотермарку
+        setPhotoForm(prev => ({ 
+          ...prev, 
+          imageUrl: dataUrl, 
+          copyright: watermarkedUrl 
+        }));
+        
+        uiStore.showSuccess('Изображение готово к защите');
+      } else {
+        setPhotoForm(prev => ({ ...prev, thumbnailUrl: dataUrl }));
+      }
     } catch {
       uiStore.showError('Не удалось прочитать изображение');
     }
   };
+
+  // БЕЗОПАСНОЕ РАСПРЕДЕЛЕНИЕ ССЫЛОК ПЕРЕД ОТПРАВКОЙ В FIREBASE
+  
 
   const openCreateModal = () => { resetForms(); setModalMode('create'); setModalOpen(true); };
   
@@ -114,7 +135,7 @@ export const AdminPage = observer(() => {
   };
 
   // ПРИНУДИТЕЛЬНОЕ ВПЕКАНИЕ ВОТЕРМАРКИ ПЕРЕД ОТПРАВКОЙ В FIREBASE
-  const handleSave = async () => {
+ const handleSave = async () => {
     try {
       if (activeTab === 'photos') {
         if (!photoForm.title || !photoForm.imageUrl) {
@@ -123,14 +144,17 @@ export const AdminPage = observer(() => {
         }
 
         let finalImageUrl = photoForm.imageUrl;
-        let finalCopyright = photoForm.copyright;
+        let finalCopyright = '';
 
-        // Если в форме горит галочка watermark (неважно, когда её нажали!)
-        if (photoForm.watermark) {
-          // 1. Сохраняем чистый оригинал в поле copyright для фотографа
+        // Если фотограф включил галочку водяного знака
+        if (photoForm.watermark && photoForm.copyright.startsWith('data:image')) {
+          // 1. В поле copyright записываем чистый оригинал (из imageUrl) для скачивания фотографом
           finalCopyright = photoForm.imageUrl;
-          // 2. Впечатываем водяной знак (измени 'ФОТОГАЛЕРЕЯ' на нужный текст)
-          finalImageUrl = await applyWatermarkToDataUrl(photoForm.imageUrl, 'ФОТОГАЛЕРЕЯ');
+          // 2. В поле imageUrl записываем готовую вотермарку (которая лежала в copyright) для гостей
+          finalImageUrl = photoForm.copyright;
+        } else {
+          // Если галочка выключена — очищаем скрытое поле, сохраняя обычное фото
+          finalCopyright = photoForm.copyright.startsWith('data:image') ? '' : photoForm.copyright;
         }
 
         const updatedFormData = { ...photoForm, imageUrl: finalImageUrl, copyright: finalCopyright };
