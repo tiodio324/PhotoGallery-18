@@ -122,7 +122,7 @@ export const AdminPage = observer(() => {
         // Если стоит галочка водяного знака — впекаем текст прямо в пиксели перед отправкой в Firebase
         if (photoForm.watermark) {
           finalCopyright = photoForm.imageUrl; // Прячем чистый оригинал в поле copyright
-          finalImageUrl = await applyWatermarkToDataUrl(photoForm.imageUrl, 'ФОТОГАЛЕРЕЯ'); // Тут вставьте ваш текст
+          finalImageUrl = await applyWatermarkToDataUrl(photoForm.imageUrl, 'GALLARYGALLARYGALLARY'); // Тут вставьте ваш текст
         }
 
         const updatedFormData = { ...photoForm, imageUrl: finalImageUrl, copyright: finalCopyright };
