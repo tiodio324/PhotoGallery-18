@@ -206,6 +206,81 @@ export const AdminPage = observer(() => {
     </div>
   );
 });
+  if (!isAdmin) {
+    return <div className={styles.page}><Card><h2>Доступ запрещен</h2><p>У вас нет прав для просмотра этой страницы.</p></Card></div>;
+  }
+
+  return (
+    <div className={styles.page}>
+      <div className={styles.header}>
+        <div>
+          <h1 className={styles.title}>Панель администратора</h1>
+          <p className={styles.subtitle}>Управление контентом галереи</p>
+        </div>
+        <Button onClick={openCreateModal}>
+          {activeTab === 'photos' ? 'Добавить фотографию' : 'Создать альбом'}
+        </Button>
+      </div>
+
+      <div className={styles.tabs}>
+        <button className={`${styles.tab} ${activeTab === 'photos' ? styles.activeTab : ''}`} onClick={() => setActiveTab('photos')}>Фотографии</button>
+        <button className={`${styles.tab} ${activeTab === 'albums' ? styles.activeTab : ''}`} onClick={() => setActiveTab('albums')}>Альбомы</button>
+      </div>
+
+      {activeTab === 'photos' ? (
+        <Card>
+          <Table columns={photoColumns} data={photos} loading={photosLoading} emptyText="Фотографии еще не добавлены" />
+        </Card>
+      ) : (
+        <Card>
+          <Table columns={albumColumns} data={albums} loading={albumsLoading} emptyText="Альбомы еще не созданы" />
+        </Card>
+      )}
+
+      <Modal isOpen={modalOpen} onClose={() => setModalOpen(false)} title={modalMode === 'create' ? (activeTab === 'photos' ? 'Добавить фотографию' : 'Создать альбом') : 'Редактировать'} size="md">
+        {activeTab === 'photos' ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <Input placeholder="Название фотографии" value={photoForm.title} onChange={e => setPhotoForm(prev => ({ ...prev, title: e.target.value }))} />
+            <Input placeholder="Описание (необязательно)" value={photoForm.description} onChange={e => setPhotoForm(prev => ({ ...prev, description: e.target.value }))} />
+            <Select label="Альбом" value={photoForm.albumId} options={albumOptions} onChange={value => setPhotoForm(prev => ({ ...prev, albumId: value }))} />
+            <Input placeholder="Авторские права / Копирайт" value={photoForm.copyright} onChange={e => setPhotoForm(prev => ({ ...prev, copyright: e.target.value }))} />
+            
+            <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                <input type="checkbox" checked={photoForm.watermark} onChange={e => setPhotoForm(prev => ({ ...prev, watermark: e.target.checked }))} />
+                Включить водяной знак
+              </label>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <label>Основное изображение:</label>
+              <input type="file" ref={imageFileRef} accept="image/*" onChange={e => handleImageFile(e.target.files?.[0], 'image')} />
+              {photoForm.imageUrl && <img src={photoForm.imageUrl} alt="Превью" style={{ maxWidth: '200px', maxHeight: '150px', objectFit: 'contain', marginTop: '8px', borderRadius: '4px' }} />}
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <label>Миниатюра (необязательно):</label>
+              <input type="file" ref={thumbnailFileRef} accept="image/*" onChange={e => handleImageFile(e.target.files?.[0], 'thumbnail')} />
+              {photoForm.thumbnailUrl && <img src={photoForm.thumbnailUrl} alt="Миниатюра" style={{ maxWidth: '100px', maxHeight: '100px', objectFit: 'contain', marginTop: '8px', borderRadius: '4px' }} />}
+            </div>
+
+            <Button onClick={handleSave} style={{ marginTop: '16px' }}>Сохранить</Button>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <Input placeholder="Название альбома" value={albumForm.name} onChange={e => setAlbumForm(prev => ({ ...prev, name: e.target.value }))} />
+            <Input placeholder="Описание альбома" value={albumForm.description} onChange={e => setAlbumForm(prev => ({ ...prev, description: e.target.value }))} />
+            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+              <input type="checkbox" checked={albumForm.isPublic} onChange={e => setAlbumForm(prev => ({ ...prev, isPublic: e.target.checked }))} />
+              Публичный альбом
+            </label>
+            <Button onClick={handleSave} style={{ marginTop: '16px' }}>Сохранить</Button>
+          </div>
+        )}
+      </Modal>
+    </div>
+  );
+});
   const handleDelete = (id: string) => { uiStore.showConfirm('Удаление', 'Удалить?', async () => {
     if (activeTab === 'photos') await deletePhoto(id); else await deleteAlbum(id);
     uiStore.showSuccess('Удалено');
