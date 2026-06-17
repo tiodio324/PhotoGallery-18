@@ -3,6 +3,8 @@ import { observer } from 'mobx-react-lite';
 import { dataStore, uiStore, authStore } from '@/store';
 import { Card, Button, Table, Modal, Input, Select } from '@/components/UI';
 import { readFileAsDataUrl, MAX_PHOTO_FILE_BYTES } from '@/utils';
+import type { TableColumn } from '@/components/UI';
+import type { Photo, Album, PhotoFormData, AlbumFormData, SelectOption } from '@/types';
 import styles from './AdminPage.module.scss';
 
 type AdminTab = 'photos' | 'albums';
@@ -14,12 +16,12 @@ export const AdminPage = observer(() => {
   const [modalOpen, setModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<'create' | 'edit'>('create');
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [photoForm, setPhotoForm] = useState<any>({ title: '', description: '', imageUrl: '', thumbnailUrl: '', albumId: '', tags: [], watermark: false, copyright: '' });
-  const [albumForm, setAlbumForm] = useState<any>({ name: '', description: '', isPublic: true });
+  const [photoForm, setPhotoForm] = useState<PhotoFormData>({ title: '', description: '', imageUrl: '', thumbnailUrl: '', albumId: '', tags: [], watermark: false, copyright: '' });
+  const [albumForm, setAlbumForm] = useState<AlbumFormData>({ name: '', description: '', isPublic: true });
   const imageFileRef = useRef<HTMLInputElement>(null);
   const thumbnailFileRef = useRef<HTMLInputElement>(null);
 
-  const albumOptions = [
+  const albumOptions: SelectOption[] = [
     { value: '', label: 'Без альбома' },
     ...activeAlbums.map(a => ({ value: a.id, label: a.name })),
   ];
@@ -49,12 +51,14 @@ export const AdminPage = observer(() => {
 
   const openCreateModal = () => { resetForms(); setModalMode('create'); setModalOpen(true); };
   
-  const openEditModal = (item: any) => {
+  const openEditModal = (item: Photo | Album) => {
     setModalMode('edit'); setEditingId(item.id);
     if (activeTab === 'photos') { 
-      setPhotoForm({ title: item.title, description: item.description || '', imageUrl: item.imageUrl, thumbnailUrl: item.thumbnailUrl, albumId: item.albumId, tags: item.tags, watermark: item.watermark, copyright: item.copyright }); 
+      const p = item as Photo; 
+      setPhotoForm({ title: p.title, description: p.description || '', imageUrl: p.imageUrl, thumbnailUrl: p.thumbnailUrl, albumId: p.albumId, tags: p.tags, watermark: p.watermark, copyright: p.copyright }); 
     } else { 
-      setAlbumForm({ name: item.name, description: item.description || '', isPublic: item.isPublic }); 
+      const a = item as Album; 
+      setAlbumForm({ name: a.name, description: a.description || '', isPublic: a.isPublic }); 
     }
     setModalOpen(true);
   };
@@ -87,6 +91,7 @@ export const AdminPage = observer(() => {
       uiStore.showError('Ошибка');
     }
   };
+
 
   const handleDelete = async (id: string, kind: 'photo' | 'album') => {
     if (!window.confirm('Вы уверены?')) return;
