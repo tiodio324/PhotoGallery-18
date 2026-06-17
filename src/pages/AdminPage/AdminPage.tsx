@@ -7,7 +7,44 @@ import type { TableColumn } from '@/components/UI';
 import type { Photo, Album, PhotoFormData, AlbumFormData, SelectOption } from '@/types';
 import styles from './AdminPage.module.scss';
 
+const applyWatermarkToDataUrl = (dataUrl: string, text: string): Promise<string> => {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.src = dataUrl;
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return resolve(dataUrl);
+
+      canvas.width = img.width;
+      canvas.height = img.height;
+      ctx.drawImage(img, 0, 0);
+
+      const fontSize = Math.max(20, Math.floor(img.width * 0.05));
+      ctx.font = `bold ${fontSize}px sans-serif`;
+      
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+
+      ctx.fillText(text, img.width / 2, img.height / 2);
+
+      ctx.strokeStyle = 'rgba(0, 0, 0, 0.2)';
+      ctx.lineWidth = Math.max(1, fontSize / 15);
+      ctx.strokeText(text, img.width / 2, img.height / 2);
+
+      resolve(canvas.toDataURL('image/jpeg', 0.9));
+    };
+    img.onerror = () => resolve(dataUrl);
+  });
+};
+
 type AdminTab = 'photos' | 'albums';
+
+// Расширяем локальный интерфейс формы для поддержки оригинала
+interface ExtendedPhotoFormData extends PhotoFormData {
+  originalImageUrl?: string;
+}
 
 export const AdminPage = observer(() => {
   const { photos, albums, photosLoading, albumsLoading, getAlbumById, createPhoto, updatePhoto, deletePhoto, createAlbum, updateAlbum, deleteAlbum, activeAlbums } = dataStore;
@@ -16,7 +53,10 @@ export const AdminPage = observer(() => {
   const [modalOpen, setModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<'create' | 'edit'>('create');
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [photoForm, setPhotoForm] = useState<PhotoFormData>({ title: '', description: '', imageUrl: '', thumbnailUrl: '', albumId: '', tags: [], watermark: false, copyright: '' });
+  
+  const [photoForm, setPhotoForm] = useState<ExtendedPhotoFormData>({ 
+    title: '', description: '', imageUrl: '', originalImageUrl: '', thumbnailUrl: '', albumId: '', tags: [], watermark: false, copyright: '' 
+  });
   const [albumForm, setAlbumForm] = useState<AlbumFormData>({ name: '', description: '', isPublic: true });
   const imageFileRef = useRef<HTMLInputElement>(null);
   const thumbnailFileRef = useRef<HTMLInputElement>(null);
@@ -27,7 +67,7 @@ export const AdminPage = observer(() => {
   ];
 
   const resetForms = () => {
-    setPhotoForm({ title: '', description: '', imageUrl: '', thumbnailUrl: '', albumId: '', tags: [], watermark: false, copyright: '' });
+    setPhotoForm({ title: '', description: '', imageUrl: '', originalImageUrl: '', thumbnailUrl: '', albumId: '', tags: [], watermark: false, copyright: '' });
     setAlbumForm({ name: '', description: '', isPublic: true });
     setEditingId(null);
     if (imageFileRef.current) imageFileRef.current.value = '';
@@ -42,32 +82,74 @@ export const AdminPage = observer(() => {
     }
     try {
       const dataUrl = await readFileAsDataUrl(file);
-      if (kind === 'image') setPhotoForm(prev => ({ ...prev, imageUrl: dataUrl }));
-      else setPhotoForm(prev => ({ ...prev, thumbnailUrl: dataUrl }));
+      if (kind === 'image') {
+        // При выборе файла сохраняем его И как основную картинку, И как чистый оригинал
+        setPhotoForm(prev => ({ ...prev, imageUrl: dataUrl, originalImageUrl: dataUrl }));
+      } else {
+        setPhotoForm(prev => ({ ...prev, thumbnailUrl: dataUrl }));
+      }
     } catch {
       uiStore.showError('Не удалось прочитать изображение');
     }
   };
+
   const openCreateModal = () => { resetForms(); setModalMode('create'); setModalOpen(true); };
+  
   const openEditModal = (item: Photo | Album) => {
     setModalMode('edit'); setEditingId(item.id);
-    if (activeTab === 'photos') { const p = item as Photo; setPhotoForm({ title: p.title, description: p.description || '', imageUrl: p.imageUrl, thumbnailUrl: p.thumbnailUrl, albumId: p.albumId, tags: p.tags, watermark: p.watermark, copyright: p.copyright }); }
-    else { const a = item as Album; setAlbumForm({ name: a.name, description: a.description || '', isPublic: a.isPublic }); }
+    if (activeTab === 'photos') { 
+      const p = item as any; // Используем any для обхода строгих типов во время миграции
+      setPhotoForm({ 
+        title: p.title, description: p.description || '', imageUrl: p.imageUrl, 
+        originalImageUrl: p.originalImageUrl || p.imageUrl, thumbnailUrl: p.thumbnailUrl, 
+        albumId: p.albumId, tags: p.tags, watermark: p.watermark, copyright: p.copyright 
+      }); 
+    } else { 
+      const a = item as Album; 
+      setAlbumForm({ name: a.name, description: a.description || '', isPublic: a.isPublic }); 
+    }
     setModalOpen(true);
   };
 
   const handleSave = async () => {
     try {
       if (activeTab === 'photos') {
-        if (!photoForm.title || !photoForm.imageUrl) { uiStore.showError('Заполните обязательные поля'); return; }
-        if (modalMode === 'create') await createPhoto(photoForm); else if (editingId) await updatePhoto(editingId, photoForm);
+        if (!photoForm.title || !photoForm.imageUrl) {
+          uiStore.showError('Заполните обязательные поля');
+          return;
+        }
+
+        let finalImageUrl = photoForm.imageUrl;
+
+        // Если стоит вотермарка, генерируем защищенную версию для imageUrl,
+        // но оставляем поле originalImageUrl чистым!
+        if (photoForm.watermark && photoForm.originalImageUrl) {
+          finalImageUrl = await applyWatermarkToDataUrl(photoForm.originalImageUrl, 'ВАШ_САЙТ.RU');
+        }
+
+        const updatedFormData = { ...photoForm, imageUrl: finalImageUrl };
+
+        if (modalMode === 'create') {
+          await createPhoto(updatedFormData);
+        } else {
+          if (editingId) await updatePhoto(editingId, updatedFormData);
+        }
       } else {
-        if (!albumForm.name) { uiStore.showError('Введите название'); return; }
-        if (modalMode === 'create') await createAlbum(albumForm); else if (editingId) await updateAlbum(editingId, albumForm);
+        if (!albumForm.name) {
+          uiStore.showError('Введите название');
+          return;
+        }
+        if (modalMode === 'create') await createAlbum(albumForm);
+        else if (editingId) await updateAlbum(editingId, albumForm);
       }
-      uiStore.showSuccess('Сохранено'); setModalOpen(false); resetForms();
-    } catch { uiStore.showError('Ошибка'); }
+      uiStore.showSuccess('Сохранено');
+      setModalOpen(false);
+      resetForms();
+    } catch {
+      uiStore.showError('Ошибка');
+    }
   };
+
 
   const handleDelete = (id: string) => { uiStore.showConfirm('Удаление', 'Удалить?', async () => {
     if (activeTab === 'photos') await deletePhoto(id); else await deleteAlbum(id);
