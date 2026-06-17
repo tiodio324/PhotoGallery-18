@@ -8,7 +8,7 @@ import styles from './GalleryPage.module.scss';
 export const GalleryPage = observer(() => {
   const { filteredPhotos, getAlbumById, incrementViews, incrementDownloads, setFilter, filters } = dataStore;
   const { canDownloadPhotos } = authStore;
-  const [selectedPhoto, setSelectedPhoto] = useState<any | null>(null); // Используем any для поддержки нового поля
+  const [selectedPhoto, setSelectedPhoto] = useState<Photo | null>(null);
   const [isBlurred, setIsBlurred] = useState(false);
 
   useEffect(() => {
@@ -43,11 +43,15 @@ export const GalleryPage = observer(() => {
     incrementViews(photo.id);
   };
 
-  const handleDownload = (photo: any) => {
+  const handleDownload = (photo: Photo) => {
     if (canDownloadPhotos()) {
       incrementDownloads(photo.id);
-      // Если у фотографа есть права, скачиваем ЧИСТЫЙ оригинал, если он существует
-      const downloadUrl = photo.originalImageUrl || photo.imageUrl;
+      // Если у фотографа есть права, скачиваем чистый оригинал, сохраненный в поле copyright.
+      // Если фото старое и оригинала там нет (загружалось до настройки), скачается обычный imageUrl.
+      const downloadUrl = (photo.watermark && photo.copyright && photo.copyright.startsWith('data:image')) 
+        ? photo.copyright 
+        : photo.imageUrl;
+        
       window.open(downloadUrl, '_blank');
     }
   };
@@ -85,7 +89,7 @@ export const GalleryPage = observer(() => {
               className="no-screenshot"
               style={{ position: 'relative', display: 'inline-block', overflow: 'hidden', background: '#141414' }}
             >
-              {/* Фотограф и гости видят одно и то же фото с вотермаркой на экране */}
+              {/* Все пользователи и фотографы видят фото с вшитой вотермаркой на экране */}
               <img 
                 src={selectedPhoto.imageUrl} 
                 alt={selectedPhoto.title} 
@@ -117,7 +121,10 @@ export const GalleryPage = observer(() => {
             <div className={styles.photoMeta}>
               <span>👁 {selectedPhoto.views}</span>
               <span>⬇ {selectedPhoto.downloads}</span>
-              {selectedPhoto.copyright && <span>© {selectedPhoto.copyright}</span>}
+              {/* Показываем копирайт текстом, только если это обычная строка автора, а не скрытый оригинал */}
+              {selectedPhoto.copyright && !selectedPhoto.copyright.startsWith('data:image') && (
+                <span>© {selectedPhoto.copyright}</span>
+              )}
             </div>
             {canDownloadPhotos() && (
               <button className={styles.downloadButton} onClick={() => handleDownload(selectedPhoto)}>
