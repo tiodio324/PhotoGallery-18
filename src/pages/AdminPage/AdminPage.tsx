@@ -7,6 +7,7 @@ import type { TableColumn } from '@/components/UI';
 import type { Photo, Album, PhotoFormData, AlbumFormData, SelectOption } from '@/types';
 import styles from './AdminPage.module.scss';
 
+// Функция наложения водяного знака прямо в браузере через HTML5 Canvas
 const applyWatermarkToDataUrl = (dataUrl: string, text: string): Promise<string> => {
   return new Promise((resolve) => {
     const img = new Image();
@@ -20,19 +21,24 @@ const applyWatermarkToDataUrl = (dataUrl: string, text: string): Promise<string>
       canvas.height = img.height;
       ctx.drawImage(img, 0, 0);
 
+      // Рассчитываем размер шрифта адаптивно (примерно 5% от ширины фото)
       const fontSize = Math.max(20, Math.floor(img.width * 0.05));
       ctx.font = `bold ${fontSize}px sans-serif`;
       
+      // Делаем текст белым с прозрачностью 30%
       ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
 
+      // Рисуем текст водяного знака ровно по центру фотографии
       ctx.fillText(text, img.width / 2, img.height / 2);
 
+      // Легкая обводка текста, чтобы он читался на белом фоне
       ctx.strokeStyle = 'rgba(0, 0, 0, 0.2)';
       ctx.lineWidth = Math.max(1, fontSize / 15);
       ctx.strokeText(text, img.width / 2, img.height / 2);
 
+      // Возвращаем новую защищенную картинку в формате DataURL
       resolve(canvas.toDataURL('image/jpeg', 0.9));
     };
     img.onerror = () => resolve(dataUrl);
@@ -41,11 +47,6 @@ const applyWatermarkToDataUrl = (dataUrl: string, text: string): Promise<string>
 
 type AdminTab = 'photos' | 'albums';
 
-// Расширяем локальный интерфейс формы для поддержки оригинала
-interface ExtendedPhotoFormData extends PhotoFormData {
-  originalImageUrl?: string;
-}
-
 export const AdminPage = observer(() => {
   const { photos, albums, photosLoading, albumsLoading, getAlbumById, createPhoto, updatePhoto, deletePhoto, createAlbum, updateAlbum, deleteAlbum, activeAlbums } = dataStore;
   const { isAdmin } = authStore;
@@ -53,10 +54,7 @@ export const AdminPage = observer(() => {
   const [modalOpen, setModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<'create' | 'edit'>('create');
   const [editingId, setEditingId] = useState<string | null>(null);
-  
-  const [photoForm, setPhotoForm] = useState<ExtendedPhotoFormData>({ 
-    title: '', description: '', imageUrl: '', originalImageUrl: '', thumbnailUrl: '', albumId: '', tags: [], watermark: false, copyright: '' 
-  });
+  const [photoForm, setPhotoForm] = useState<PhotoFormData>({ title: '', description: '', imageUrl: '', thumbnailUrl: '', albumId: '', tags: [], watermark: false, copyright: '' });
   const [albumForm, setAlbumForm] = useState<AlbumFormData>({ name: '', description: '', isPublic: true });
   const imageFileRef = useRef<HTMLInputElement>(null);
   const thumbnailFileRef = useRef<HTMLInputElement>(null);
@@ -67,7 +65,7 @@ export const AdminPage = observer(() => {
   ];
 
   const resetForms = () => {
-    setPhotoForm({ title: '', description: '', imageUrl: '', originalImageUrl: '', thumbnailUrl: '', albumId: '', tags: [], watermark: false, copyright: '' });
+    setPhotoForm({ title: '', description: '', imageUrl: '', thumbnailUrl: '', albumId: '', tags: [], watermark: false, copyright: '' });
     setAlbumForm({ name: '', description: '', isPublic: true });
     setEditingId(null);
     if (imageFileRef.current) imageFileRef.current.value = '';
@@ -82,12 +80,8 @@ export const AdminPage = observer(() => {
     }
     try {
       const dataUrl = await readFileAsDataUrl(file);
-      if (kind === 'image') {
-        // При выборе файла сохраняем его И как основную картинку, И как чистый оригинал
-        setPhotoForm(prev => ({ ...prev, imageUrl: dataUrl, originalImageUrl: dataUrl }));
-      } else {
-        setPhotoForm(prev => ({ ...prev, thumbnailUrl: dataUrl }));
-      }
+      if (kind === 'image') setPhotoForm(prev => ({ ...prev, imageUrl: dataUrl }));
+      else setPhotoForm(prev => ({ ...prev, thumbnailUrl: dataUrl }));
     } catch {
       uiStore.showError('Не удалось прочитать изображение');
     }
@@ -98,12 +92,8 @@ export const AdminPage = observer(() => {
   const openEditModal = (item: Photo | Album) => {
     setModalMode('edit'); setEditingId(item.id);
     if (activeTab === 'photos') { 
-      const p = item as any; // Используем any для обхода строгих типов во время миграции
-      setPhotoForm({ 
-        title: p.title, description: p.description || '', imageUrl: p.imageUrl, 
-        originalImageUrl: p.originalImageUrl || p.imageUrl, thumbnailUrl: p.thumbnailUrl, 
-        albumId: p.albumId, tags: p.tags, watermark: p.watermark, copyright: p.copyright 
-      }); 
+      const p = item as Photo; 
+      setPhotoForm({ title: p.title, description: p.description || '', imageUrl: p.imageUrl, thumbnailUrl: p.thumbnailUrl, albumId: p.albumId, tags: p.tags, watermark: p.watermark, copyright: p.copyright }); 
     } else { 
       const a = item as Album; 
       setAlbumForm({ name: a.name, description: a.description || '', isPublic: a.isPublic }); 
@@ -111,6 +101,7 @@ export const AdminPage = observer(() => {
     setModalOpen(true);
   };
 
+  // Принудительное наложение знака в момент клика на кнопку "Сохранить"
   const handleSave = async () => {
     try {
       if (activeTab === 'photos') {
@@ -120,14 +111,17 @@ export const AdminPage = observer(() => {
         }
 
         let finalImageUrl = photoForm.imageUrl;
+        let finalCopyright = photoForm.copyright;
 
-        // Если стоит вотермарка, генерируем защищенную версию для imageUrl,
-        // но оставляем поле originalImageUrl чистым!
-        if (photoForm.watermark && photoForm.originalImageUrl) {
-          finalImageUrl = await applyWatermarkToDataUrl(photoForm.originalImageUrl, 'ВАШ_САЙТ.RU');
+        // Если стоит галочка водяного знака — обрабатываем картинку перед записью в Firebase
+        if (photoForm.watermark) {
+          // 1. Сохраняем чистый оригинал изображения в поле copyright
+          finalCopyright = photoForm.imageUrl;
+          // 2. Впечатываем водяной знак (измените 'ВАШ_САЙТ.RU' на название вашего сайта)
+          finalImageUrl = await applyWatermarkToDataUrl(photoForm.imageUrl, 'GALLERYGALLERYGALLERY');
         }
 
-        const updatedFormData = { ...photoForm, imageUrl: finalImageUrl };
+        const updatedFormData = { ...photoForm, imageUrl: finalImageUrl, copyright: finalCopyright };
 
         if (modalMode === 'create') {
           await createPhoto(updatedFormData);
@@ -149,7 +143,6 @@ export const AdminPage = observer(() => {
       uiStore.showError('Ошибка');
     }
   };
-
 
   const handleDelete = (id: string) => { uiStore.showConfirm('Удаление', 'Удалить?', async () => {
     if (activeTab === 'photos') await deletePhoto(id); else await deleteAlbum(id);
@@ -229,3 +222,4 @@ export const AdminPage = observer(() => {
     </div>
   );
 });
+
