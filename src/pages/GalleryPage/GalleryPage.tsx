@@ -8,11 +8,14 @@ import styles from './GalleryPage.module.scss';
 export const GalleryPage = observer(() => {
   const { filteredPhotos, getAlbumById, incrementViews, incrementDownloads, setFilter, filters } = dataStore;
   const { canDownloadPhotos } = authStore;
-  const [selectedPhoto, setSelectedPhoto] = useState<Photo | null>(null);
+  const [selectedPhoto, setSelectedPhoto] = useState<any | null>(null); // Используем any для поддержки нового поля
+  const [isBlurred, setIsBlurred] = useState(false);
 
-  // Жесткая блокировка горячих клавиш сохранения и DevTools
   useEffect(() => {
     if (canDownloadPhotos()) return;
+
+    const handleBlur = () => setIsBlurred(true);
+    const handleFocus = () => setIsBlurred(false);
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (
@@ -24,19 +27,28 @@ export const GalleryPage = observer(() => {
       }
     };
 
+    window.addEventListener('blur', handleBlur);
+    window.addEventListener('focus', handleFocus);
     window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [canDownloadPhotos]);
+
+    return () => {
+      window.removeEventListener('blur', handleBlur);
+      window.removeEventListener('focus', handleFocus);
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [canDownloadPhotos, selectedPhoto]);
 
   const handlePhotoClick = (photo: Photo) => {
     setSelectedPhoto(photo);
     incrementViews(photo.id);
   };
 
-  const handleDownload = (photo: Photo) => {
+  const handleDownload = (photo: any) => {
     if (canDownloadPhotos()) {
       incrementDownloads(photo.id);
-      window.open(photo.imageUrl, '_blank');
+      // Если у фотографа есть права, скачиваем ЧИСТЫЙ оригинал, если он существует
+      const downloadUrl = photo.originalImageUrl || photo.imageUrl;
+      window.open(downloadUrl, '_blank');
     }
   };
 
@@ -48,18 +60,10 @@ export const GalleryPage = observer(() => {
 
   return (
     <div className={styles.page}>
-      {/* Встраиваем CSS-стили, которые работают быстрее JS при попытке напечатать или сохранить страницу */}
       {!canDownloadPhotos() && (
         <style>{`
-          @media print {
-            body { display: none !important; }
-          }
-          .no-screenshot {
-            -webkit-user-select: none !important;
-            -moz-user-select: none !important;
-            -ms-user-select: none !important;
-            user-select: none !important;
-          }
+          @media print { body { display: none !important; } }
+          .no-screenshot { user-select: none !important; -webkit-user-select: none !important; }
         `}</style>
       )}
 
@@ -72,23 +76,16 @@ export const GalleryPage = observer(() => {
       </Card>
 
       {selectedPhoto ? (
-        <Modal isOpen={!!selectedPhoto} onClose={() => setSelectedPhoto(null)} title={selectedPhoto.title} size="lg">
+        <Modal isOpen={!!selectedPhoto} onClose={() => { setSelectedPhoto(null); setIsBlurred(false); }} title={selectedPhoto.title} size="lg">
           <div className={styles.photoViewer}>
             
-            {/* БЛОК МАКСИМАЛЬНОЙ ЗАЩИТЫ ИЗОБРАЖЕНИЯ */}
             <div 
               onContextMenu={preventActions}
               onDragStart={preventActions}
               className="no-screenshot"
-              style={{ 
-                position: 'relative', 
-                display: 'inline-block',
-                WebkitTouchCallout: canDownloadPhotos() ? 'default' : 'none',
-                overflow: 'hidden',
-                background: '#141414' // Фоновый цвет под картинкой
-              }}
+              style={{ position: 'relative', display: 'inline-block', overflow: 'hidden', background: '#141414' }}
             >
-              {/* Реальное изображение */}
+              {/* Фотограф и гости видят одно и то же фото с вотермаркой на экране */}
               <img 
                 src={selectedPhoto.imageUrl} 
                 alt={selectedPhoto.title} 
@@ -96,32 +93,25 @@ export const GalleryPage = observer(() => {
                 onContextMenu={preventActions}
                 onDragStart={preventActions}
                 style={{
-                  WebkitTouchCallout: canDownloadPhotos() ? 'default' : 'none',
-                  pointerEvents: canDownloadPhotos() ? 'auto' : 'none', // Мышь полностью кликает сквозь картинку
+                  pointerEvents: canDownloadPhotos() ? 'auto' : 'none',
                   display: 'block',
                   maxWidth: '100%',
                   height: 'auto'
                 }}
               />
 
-              {/* Прозрачный невидимый слой-капкан поверх всей картинки */}
               {!canDownloadPhotos() && (
                 <div
                   onContextMenu={preventActions}
                   style={{
                     position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    width: '100%',
-                    height: '100%',
-                    // Тяжелый прозрачный GIF не позволяет перетащить или вызвать меню для img под ним
+                    top: 0, left: 0, width: '100%', height: '100%',
                     background: 'url("data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7") repeat',
                     zIndex: 2,
                   }}
                 />
               )}
             </div>
-            {/* КОНЕЦ БЛОКА ЗАЩИТЫ */}
 
             {selectedPhoto.description && <p className={styles.photoDescription}>{selectedPhoto.description}</p>}
             <div className={styles.photoMeta}>
@@ -131,7 +121,7 @@ export const GalleryPage = observer(() => {
             </div>
             {canDownloadPhotos() && (
               <button className={styles.downloadButton} onClick={() => handleDownload(selectedPhoto)}>
-                Скачать фотографию
+                Скачать оригинал без вотермарки
               </button>
             )}
           </div>
@@ -166,4 +156,3 @@ export const GalleryPage = observer(() => {
     </div>
   );
 });
-
