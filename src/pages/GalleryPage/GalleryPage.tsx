@@ -1,25 +1,17 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { observer } from 'mobx-react-lite';
 import { dataStore, authStore } from '@/store';
 import { Card, Input, Badge, Modal } from '@/components/UI';
-import type { Photo } from '@/types';
 import styles from './GalleryPage.module.scss';
 
 export const GalleryPage = observer(() => {
-  const { filteredPhotos, getAlbumById, incrementViews, incrementDownloads, setFilter, filters } = dataStore;
-  const { canDownloadPhotos } = authStore;
-  const [selectedPhoto, setSelectedPhoto] = useState<Photo | null>(null);
+  const { filteredPhotos, getAlbumById, incrementViews, filters, setFilter } = dataStore as any;
+  const { canDownloadPhotos } = authStore as any;
+  const [selectedPhoto, setSelectedPhoto] = useState<any>(null);
 
-  const handlePhotoClick = (photo: Photo) => {
+  const handlePhotoClick = (photo: any) => {
     setSelectedPhoto(photo);
     incrementViews(photo.id);
-  };
-
-  const handleDownload = (photo: Photo) => {
-    if (canDownloadPhotos()) {
-      incrementDownloads(photo.id);
-      window.open(photo.imageUrl, '_blank');
-    }
   };
 
   const preventActions = (e: React.MouseEvent | React.TouchEvent) => {
@@ -41,21 +33,21 @@ export const GalleryPage = observer(() => {
       </div>
 
       <Card className={styles.filters}>
-        <Input placeholder="Поиск фотографий..." value={filters.search || ''} onChange={e => setFilter('search', e.target.value || undefined)} />
+        <Input placeholder="Поиск фотографий..." value={filters.search || ''} onChange={(e: any) => setFilter('search', e.target.value || undefined)} />
       </Card>
 
       {selectedPhoto ? (
         <Modal isOpen={!!selectedPhoto} onClose={() => setSelectedPhoto(null)} title={selectedPhoto.title} size="lg">
           <div className={styles.photoViewer}>
             
-            {/* БЛОК МГНОВЕННОЙ ЗАЩИТЫ И НАЛОЖЕНИЯ ЗНАКА ДЛЯ ХОСТИНГА */}
+            {/* БЛОК МГНОВЕННОЙ ЗАЩИТЫ И НАЛОЖЕНИЯ ЗНАКА */}
             <div 
               onContextMenu={preventActions}
               onDragStart={preventActions}
               className="no-screenshot"
               style={{ position: 'relative', display: 'inline-block', overflow: 'hidden' }}
             >
-              {/* Оригинальное изображение грузится без сбоев */}
+              {/* Оригинальное изображение */}
               <img 
                 src={selectedPhoto.imageUrl} 
                 alt={selectedPhoto.title} 
@@ -90,14 +82,14 @@ export const GalleryPage = observer(() => {
                     top: '50%',
                     left: '50%',
                     transform: 'translate(-50%, -50%)',
-                    color: 'rgba(255, 255, 255, 0.4)', // Белый цвет с прозрачностью
-                    fontSize: 'clamp(24px, 6vw, 54px)', // Адаптивный крупный размер
+                    color: 'rgba(255, 255, 255, 0.4)', 
+                    fontSize: 'clamp(24px, 6vw, 54px)', 
                     fontWeight: 'bold',
                     fontFamily: 'sans-serif',
                     letterSpacing: '3px',
                     pointerEvents: 'none',
                     zIndex: 3,
-                    textShadow: '0px 0px 5px rgba(0,0,0,0.4)', // Тень, чтобы читалось на белом фоне
+                    textShadow: '0px 0px 5px rgba(0,0,0,0.4)', 
                     whiteSpace: 'nowrap'
                   }}>
                     ФОТОГАЛЕРЕЯ
@@ -105,7 +97,6 @@ export const GalleryPage = observer(() => {
                 </>
               )}
             </div>
-            {/* КОНЕЦ БЛОКА ЗАЩИТЫ */}
 
             {selectedPhoto.description && <p className={styles.photoDescription}>{selectedPhoto.description}</p>}
             <div className={styles.photoMeta}>
@@ -113,16 +104,11 @@ export const GalleryPage = observer(() => {
               <span>⬇ {selectedPhoto.downloads}</span>
               {selectedPhoto.copyright && <span>© {selectedPhoto.copyright}</span>}
             </div>
-            {canDownloadPhotos() && (
-              <button className={styles.downloadButton} onClick={() => handleDownload(selectedPhoto)}>
-                Скачать фотографию
-              </button>
-            )}
           </div>
         </Modal>
       ) : (
         <div className={styles.photosGrid}>
-          {filteredPhotos.map(photo => (
+          {filteredPhotos.map((photo: any) => (
             <Card key={photo.id} className={styles.photoCard} hoverable onClick={() => handlePhotoClick(photo)}>
               <div 
                 className={`${styles.photoThumbnail} no-screenshot`}
@@ -150,3 +136,4 @@ export const GalleryPage = observer(() => {
     </div>
   );
 });
+
