@@ -5,13 +5,31 @@ import { Card, Input, Badge, Modal } from '@/components/UI';
 import styles from './GalleryPage.module.scss';
 
 export const GalleryPage = observer(() => {
-  const { filteredPhotos, getAlbumById, incrementViews, filters, setFilter } = dataStore as any;
+  const { filteredPhotos, getAlbumById, incrementViews, incrementDownloads, setFilter, filters } = dataStore as any;
   const { canDownloadPhotos } = authStore as any;
   const [selectedPhoto, setSelectedPhoto] = useState<any>(null);
 
   const handlePhotoClick = (photo: any) => {
     setSelectedPhoto(photo);
     incrementViews(photo.id);
+  };
+
+  const handleDownload = (photo: any) => {
+    if (canDownloadPhotos()) {
+      incrementDownloads(photo.id);
+      
+      // Если в поле copyright сохранен чистый оригинал — скачиваем его, иначе обычный imageUrl
+      const downloadUrl = (photo.watermark && photo.copyright && photo.copyright.startsWith('data:image')) 
+        ? photo.copyright 
+        : photo.imageUrl;
+        
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.download = photo.title || 'photo';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
   };
 
   const preventActions = (e: React.MouseEvent | React.TouchEvent) => {
@@ -40,14 +58,13 @@ export const GalleryPage = observer(() => {
         <Modal isOpen={!!selectedPhoto} onClose={() => setSelectedPhoto(null)} title={selectedPhoto.title} size="lg">
           <div className={styles.photoViewer}>
             
-            {/* БЛОК МГНОВЕННОЙ ЗАЩИТЫ И НАЛОЖЕНИЯ ЗНАКА */}
             <div 
               onContextMenu={preventActions}
               onDragStart={preventActions}
               className="no-screenshot"
-              style={{ position: 'relative', display: 'inline-block', overflow: 'hidden' }}
+              style={{ position: 'relative', display: 'inline-block' }}
             >
-              {/* Оригинальное изображение */}
+              {/* Показываем изображение (вотермарка уже внутри самого файла) */}
               <img 
                 src={selectedPhoto.imageUrl} 
                 alt={selectedPhoto.title} 
@@ -62,39 +79,17 @@ export const GalleryPage = observer(() => {
                 }}
               />
 
-              {/* Если посетитель — гость: принудительно включаем защиту и вотермарку */}
+              {/* Невидимый прозрачный щит поверх фото для гостей */}
               {!canDownloadPhotos() && (
-                <>
-                  {/* Прозрачный невидимый слой поверх фото */}
-                  <div
-                    onContextMenu={preventActions}
-                    style={{
-                      position: 'absolute',
-                      top: 0, left: 0, width: '100%', height: '100%',
-                      background: 'url("data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7") repeat',
-                      zIndex: 2,
-                    }}
-                  />
-
-                  {/* Крупный водяной знак, который выводится прямо на экране */}
-                  <div style={{
+                <div
+                  onContextMenu={preventActions}
+                  style={{
                     position: 'absolute',
-                    top: '50%',
-                    left: '50%',
-                    transform: 'translate(-50%, -50%)',
-                    color: 'rgba(255, 255, 255, 0.4)', 
-                    fontSize: 'clamp(24px, 6vw, 54px)', 
-                    fontWeight: 'bold',
-                    fontFamily: 'sans-serif',
-                    letterSpacing: '3px',
-                    pointerEvents: 'none',
-                    zIndex: 3,
-                    textShadow: '0px 0px 5px rgba(0,0,0,0.4)', 
-                    whiteSpace: 'nowrap'
-                  }}>
-                    ФОТОГАЛЕРЕЯ
-                  </div>
-                </>
+                    top: 0, left: 0, width: '100%', height: '100%',
+                    background: 'url("data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7") repeat',
+                    zIndex: 2,
+                  }}
+                />
               )}
             </div>
 
@@ -102,8 +97,16 @@ export const GalleryPage = observer(() => {
             <div className={styles.photoMeta}>
               <span>👁 {selectedPhoto.views}</span>
               <span>⬇ {selectedPhoto.downloads}</span>
-              {selectedPhoto.copyright && <span>© {selectedPhoto.copyright}</span>}
+              {/* Показываем копирайт только если это обычный текст, а не скрытый вшитый файл */}
+              {selectedPhoto.copyright && !selectedPhoto.copyright.startsWith('data:image') && (
+                <span>© {selectedPhoto.copyright}</span>
+              )}
             </div>
+            {canDownloadPhotos() && (
+              <button className={styles.downloadButton} onClick={() => handleDownload(selectedPhoto)}>
+                Скачать оригинал без вотермарки
+              </button>
+            )}
           </div>
         </Modal>
       ) : (
