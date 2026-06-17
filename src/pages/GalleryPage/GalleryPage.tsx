@@ -85,7 +85,7 @@ export const GalleryPage = observer(() => {
                   />
 
                   {/* Крупный водяной знак текстом (показывается, если активен чекбокс фотографа) */}
-                  {selectedPhoto.watermark && (
+                  {selectedPhoto && (
                     <div style={{
                       position: 'absolute',
                       top: '50%',
