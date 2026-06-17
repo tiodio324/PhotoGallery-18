@@ -7,7 +7,7 @@ import type { TableColumn } from '@/components/UI';
 import type { Photo, Album, PhotoFormData, AlbumFormData, SelectOption } from '@/types';
 import styles from './AdminPage.module.scss';
 
-// Функция наложения водяного знака прямо в браузере через HTML5 Canvas
+// Гарантированно рабочая функция наложения водяного знака
 const applyWatermarkToDataUrl = (dataUrl: string, text: string): Promise<string> => {
   return new Promise((resolve) => {
     const img = new Image();
@@ -19,26 +19,29 @@ const applyWatermarkToDataUrl = (dataUrl: string, text: string): Promise<string>
 
       canvas.width = img.width;
       canvas.height = img.height;
+      
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
       ctx.drawImage(img, 0, 0);
 
-      // Рассчитываем размер шрифта адаптивно (примерно 5% от ширины фото)
+      // Размер букв: 5% от ширины снимка
       const fontSize = Math.max(20, Math.floor(img.width * 0.05));
       ctx.font = `bold ${fontSize}px sans-serif`;
       
-      // Делаем текст белым с прозрачностью 30%
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+      // Настройка прозрачного белого цвета текста
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
 
-      // Рисуем текст водяного знака ровно по центру фотографии
+      // Выводим ровно в центр экрана
       ctx.fillText(text, img.width / 2, img.height / 2);
 
-      // Легкая обводка текста, чтобы он читался на белом фоне
+      // Обводка вокруг букв, чтобы текст читался на светлом фоне
       ctx.strokeStyle = 'rgba(0, 0, 0, 0.2)';
-      ctx.lineWidth = Math.max(1, fontSize / 15);
+      ctx.lineWidth = Math.max(1, fontSize / 12);
       ctx.strokeText(text, img.width / 2, img.height / 2);
 
-      // Возвращаем новую защищенную картинку в формате DataURL
+      // Переводим холст в надежный формат JPEG (его поддерживают 100% браузеров)
       resolve(canvas.toDataURL('image/jpeg', 0.9));
     };
     img.onerror = () => resolve(dataUrl);
@@ -101,7 +104,6 @@ export const AdminPage = observer(() => {
     setModalOpen(true);
   };
 
-  // Принудительное наложение знака в момент клика на кнопку "Сохранить"
   const handleSave = async () => {
     try {
       if (activeTab === 'photos') {
@@ -113,12 +115,12 @@ export const AdminPage = observer(() => {
         let finalImageUrl = photoForm.imageUrl;
         let finalCopyright = photoForm.copyright;
 
-        // Если стоит галочка водяного знака — обрабатываем картинку перед записью в Firebase
+        // Накладываем водяной знак, только если горит галочка в форме
         if (photoForm.watermark) {
-          // 1. Сохраняем чистый оригинал изображения в поле copyright
+          // 1. Сохраняем чистый оригинал в скрытое поле copyright для фотографа
           finalCopyright = photoForm.imageUrl;
-          // 2. Впечатываем водяной знак (измените 'ВАШ_САЙТ.RU' на название вашего сайта)
-          finalImageUrl = await applyWatermarkToDataUrl(photoForm.imageUrl, 'GALLERYGALLERYGALLERY');
+          // 2. Впечатываем текст (поменяйте 'ДЛЯ SITE.RU' на имя вашего бренда)
+          finalImageUrl = await applyWatermarkToDataUrl(photoForm.imageUrl, 'GALLERYGALLERYGALLERYGALLERY');
         }
 
         const updatedFormData = { ...photoForm, imageUrl: finalImageUrl, copyright: finalCopyright };
@@ -222,4 +224,5 @@ export const AdminPage = observer(() => {
     </div>
   );
 });
+
 
