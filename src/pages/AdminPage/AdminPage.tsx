@@ -7,55 +7,6 @@ import type { TableColumn } from '@/components/UI';
 import type { Photo, Album, PhotoFormData, AlbumFormData, SelectOption } from '@/types';
 import styles from './AdminPage.module.scss';
 
-// Стабильная функция впекания знака через Blob для работы на Vercel
-const applyWatermarkToDataUrl = (dataUrl: string, text: string): Promise<string> => {
-  return new Promise((resolve) => {
-    const img = new Image();
-    img.crossOrigin = 'anonymous'; 
-    img.src = dataUrl;
-    
-    img.onload = () => {
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
-      if (!ctx) return resolve(dataUrl);
-
-      canvas.width = img.width;
-      canvas.height = img.height;
-      
-      ctx.imageSmoothingEnabled = true;
-      ctx.imageSmoothingQuality = 'high';
-      ctx.drawImage(img, 0, 0);
-
-      // Адаптивный крупный шрифт (6% от ширины фотографии)
-      const fontSize = Math.max(24, Math.floor(img.width * 0.06));
-      ctx.font = `bold ${fontSize}px sans-serif`;
-      
-      // Яркий белый цвет с 40% прозрачности, чтобы его точно было видно
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-
-      // Рисуем надпись ровно по центру страницы
-      ctx.fillText(text, img.width / 2, img.height / 2);
-
-      // Жирная темная обводка букв
-      ctx.strokeStyle = 'rgba(0, 0, 0, 0.3)';
-      ctx.lineWidth = Math.max(2, fontSize / 10);
-      ctx.strokeText(text, img.width / 2, img.height / 2);
-
-      // Безопасная конвертация через Blob для хостинга Vercel
-      canvas.toBlob((blob) => {
-        if (!blob) return resolve(dataUrl);
-        const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result as string);
-        reader.readAsDataURL(blob);
-      }, 'image/jpeg', 0.9);
-    };
-    
-    img.onerror = () => resolve(dataUrl);
-  });
-};
-
 type AdminTab = 'photos' | 'albums';
 
 export const AdminPage = observer(() => {
@@ -83,8 +34,7 @@ export const AdminPage = observer(() => {
     if (thumbnailFileRef.current) thumbnailFileRef.current.value = '';
   };
 
-  // Возвращаем функцию к исходному простому и быстрому чтению файла без условий
- const handleImageFile = async (file: File | undefined, kind: 'image' | 'thumbnail') => {
+  const handleImageFile = async (file: File | undefined, kind: 'image' | 'thumbnail') => {
     if (!file || !file.type.startsWith('image/')) return;
     if (file.size > MAX_PHOTO_FILE_BYTES) {
       uiStore.showError(`Файл больше ${MAX_PHOTO_FILE_BYTES / (1024 * 1024)} МБ`);
@@ -92,33 +42,12 @@ export const AdminPage = observer(() => {
     }
     try {
       const dataUrl = await readFileAsDataUrl(file);
-      
-      if (kind === 'image') {
-        // Показываем лоадер, пока Canvas обрабатывает тяжелую картинку
-        uiStore.showSuccess('Обработка водяного знака...');
-        
-        // В ФОНЕ ГЕНЕРИРУЕМ ВЕРСИЮ С ВОТЕРМАРКОЙ (Поменяйте 'ФОТОГАЛЕРЕЯ' на свое название)
-        const watermarkedUrl = await applyWatermarkToDataUrl(dataUrl, 'ФОТОГАЛЕРЕЯ');
-
-        // imageUrl временно хранит чистый оригинал для предпросмотра, 
-        // а в copyright мы временно прячем готовую вотермарку
-        setPhotoForm(prev => ({ 
-          ...prev, 
-          imageUrl: dataUrl, 
-          copyright: watermarkedUrl 
-        }));
-        
-        uiStore.showSuccess('Изображение готово к защите');
-      } else {
-        setPhotoForm(prev => ({ ...prev, thumbnailUrl: dataUrl }));
-      }
+      if (kind === 'image') setPhotoForm(prev => ({ ...prev, imageUrl: dataUrl }));
+      else setPhotoForm(prev => ({ ...prev, thumbnailUrl: dataUrl }));
     } catch {
       uiStore.showError('Не удалось прочитать изображение');
     }
   };
-
-  // БЕЗОПАСНОЕ РАСПРЕДЕЛЕНИЕ ССЫЛОК ПЕРЕД ОТПРАВКОЙ В FIREBASE
-  
 
   const openCreateModal = () => { resetForms(); setModalMode('create'); setModalOpen(true); };
   
@@ -134,8 +63,7 @@ export const AdminPage = observer(() => {
     setModalOpen(true);
   };
 
-  // ПРИНУДИТЕЛЬНОЕ ВПЕКАНИЕ ВОТЕРМАРКИ ПЕРЕД ОТПРАВКОЙ В FIREBASE
- const handleSave = async () => {
+  const handleSave = async () => {
     try {
       if (activeTab === 'photos') {
         if (!photoForm.title || !photoForm.imageUrl) {
@@ -143,26 +71,10 @@ export const AdminPage = observer(() => {
           return;
         }
 
-        let finalImageUrl = photoForm.imageUrl;
-        let finalCopyright = '';
-
-        // Если фотограф включил галочку водяного знака
-        if (photoForm.watermark && photoForm.copyright.startsWith('data:image')) {
-          // 1. В поле copyright записываем чистый оригинал (из imageUrl) для скачивания фотографом
-          finalCopyright = photoForm.imageUrl;
-          // 2. В поле imageUrl записываем готовую вотермарку (которая лежала в copyright) для гостей
-          finalImageUrl = photoForm.copyright;
-        } else {
-          // Если галочка выключена — очищаем скрытое поле, сохраняя обычное фото
-          finalCopyright = photoForm.copyright.startsWith('data:image') ? '' : photoForm.copyright;
-        }
-
-        const updatedFormData = { ...photoForm, imageUrl: finalImageUrl, copyright: finalCopyright };
-
         if (modalMode === 'create') {
-          await createPhoto(updatedFormData);
+          await createPhoto(photoForm);
         } else {
-          if (editingId) await updatePhoto(editingId, updatedFormData);
+          if (editingId) await updatePhoto(editingId, photoForm);
         }
       } else {
         if (!albumForm.name) {
