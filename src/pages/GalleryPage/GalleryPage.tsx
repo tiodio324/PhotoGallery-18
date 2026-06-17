@@ -18,7 +18,7 @@ export const GalleryPage = observer(() => {
     if (canDownloadPhotos()) {
       incrementDownloads(photo.id);
       
-      // Если в поле copyright сохранен чистый оригинал — скачиваем его, иначе обычный imageUrl
+      // Если в поле copyright сохранен чистый оригинал — скачиваем его
       const downloadUrl = (photo.watermark && photo.copyright && photo.copyright.startsWith('data:image')) 
         ? photo.copyright 
         : photo.imageUrl;
@@ -32,7 +32,7 @@ export const GalleryPage = observer(() => {
     }
   };
 
-  const preventActions = (e: React.MouseEvent | React.TouchEvent) => {
+  const preventActions = (e: any) => {
     if (!canDownloadPhotos()) {
       e.preventDefault();
     }
@@ -64,7 +64,7 @@ export const GalleryPage = observer(() => {
               className="no-screenshot"
               style={{ position: 'relative', display: 'inline-block' }}
             >
-              {/* Показываем изображение (вотермарка уже внутри самого файла) */}
+              {/* Картинка (вотермарка теперь будет внутри самого файла) */}
               <img 
                 src={selectedPhoto.imageUrl} 
                 alt={selectedPhoto.title} 
@@ -79,7 +79,7 @@ export const GalleryPage = observer(() => {
                 }}
               />
 
-              {/* Невидимый прозрачный щит поверх фото для гостей */}
+              {/* Невидимый прозрачный слой поверх фото для гостей */}
               {!canDownloadPhotos() && (
                 <div
                   onContextMenu={preventActions}
@@ -97,7 +97,7 @@ export const GalleryPage = observer(() => {
             <div className={styles.photoMeta}>
               <span>👁 {selectedPhoto.views}</span>
               <span>⬇ {selectedPhoto.downloads}</span>
-              {/* Показываем копирайт только если это обычный текст, а не скрытый вшитый файл */}
+              {/* Скрываем огромный код оригинала от гостей */}
               {selectedPhoto.copyright && !selectedPhoto.copyright.startsWith('data:image') && (
                 <span>© {selectedPhoto.copyright}</span>
               )}
