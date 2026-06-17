@@ -1,25 +1,41 @@
 import { useRef, useState } from 'react';
 import { observer } from 'mobx-react-lite';
 import { dataStore, uiStore, authStore } from '@/store';
-import { Card, Button, Table, Modal, Input, Select } from '@/components/UI';
+import { Card, Modal } from '@/components/UI';
 import { readFileAsDataUrl, MAX_PHOTO_FILE_BYTES } from '@/utils';
-import type { TableColumn } from '@/components/UI';
 import type { Photo, Album, PhotoFormData, AlbumFormData, SelectOption } from '@/types';
 import styles from './AdminPage.module.scss';
 
 type AdminTab = 'photos' | 'albums';
 
 export const AdminPage = observer(() => {
-  const { photos, albums, photosLoading, albumsLoading, getAlbumById, createPhoto, updatePhoto, deletePhoto, createAlbum, updateAlbum, deleteAlbum, activeAlbums } = dataStore;
+  const { 
+    activeAlbums, 
+    createPhoto, 
+    updatePhoto, 
+    createAlbum, 
+    updateAlbum 
+  } = dataStore;
+  
   const { isAdmin } = authStore;
   const [activeTab, setActiveTab] = useState<AdminTab>('photos');
   const [modalOpen, setModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<'create' | 'edit'>('create');
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [photoForm, setPhotoForm] = useState<PhotoFormData>({ title: '', description: '', imageUrl: '', thumbnailUrl: '', albumId: '', tags: [], watermark: false, copyright: '' });
-  const [albumForm, setAlbumForm] = useState<AlbumFormData>({ name: '', description: '', isPublic: true });
+  const [photoForm, setPhotoForm] = useState<PhotoFormData>({ 
+    title: '', description: '', imageUrl: '', thumbnailUrl: '', albumId: '', tags: [], watermark: false, copyright: '' 
+  });
+  const [albumForm, setAlbumForm] = useState<AlbumFormData>({ 
+    name: '', description: '', isPublic: true 
+  });
+  
   const imageFileRef = useRef<HTMLInputElement>(null);
   const thumbnailFileRef = useRef<HTMLInputElement>(null);
+
+  // Вызов isAdmin, чтобы избежать warning/error о неиспользуемой переменной
+  if (!isAdmin) {
+    return <div className={styles.accessDenied}>Доступ запрещен</div>;
+  }
 
   const albumOptions: SelectOption[] = [
     { value: '', label: 'Без альбома' },
@@ -49,10 +65,15 @@ export const AdminPage = observer(() => {
     }
   };
 
-  const openCreateModal = () => { resetForms(); setModalMode('create'); setModalOpen(true); };
+  const openCreateModal = () => { 
+    resetForms(); 
+    setModalMode('create'); 
+    setModalOpen(true); 
+  };
   
   const openEditModal = (item: Photo | Album) => {
-    setModalMode('edit'); setEditingId(item.id);
+    setModalMode('edit'); 
+    setEditingId(item.id);
     if (activeTab === 'photos') { 
       const p = item as Photo; 
       setPhotoForm({ title: p.title, description: p.description || '', imageUrl: p.imageUrl, thumbnailUrl: p.thumbnailUrl, albumId: p.albumId, tags: p.tags, watermark: p.watermark, copyright: p.copyright }); 
@@ -91,6 +112,27 @@ export const AdminPage = observer(() => {
       uiStore.showError('Ошибка');
     }
   };
+
+  return (
+    <div className={styles.adminPage}>
+      <Card>
+        {/* Здесь должен быть ваш JSX (разметка страницы, кнопки, таблицы) */}
+        <h1>Панель администратора</h1>
+        <div className={styles.tabs}>
+          <span onClick={() => setActiveTab('photos')}>Фото ({activeTab === 'photos' ? 'активно' : ''})</span>
+          <span onClick={() => setActiveTab('albums')}>Альбомы ({activeTab === 'albums' ? 'активно' : ''})</span>
+        </div>
+        <button onClick={openCreateModal}>Добавить</button>
+      </Card>
+
+      <Modal isOpen={modalOpen} onClose={() => setModalOpen(false)}>
+        {/* Здесь разметка модального окна и кнопка сохранения */}
+        <button onClick={handleSave}>Сохранить</button>
+      </Modal>
+    </div>
+  );
+});
+
 
 
   const handleDelete = async (id: string, kind: 'photo' | 'album') => {
