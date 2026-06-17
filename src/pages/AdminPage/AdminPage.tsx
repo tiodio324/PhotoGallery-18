@@ -1,20 +1,29 @@
 import { useRef, useState } from 'react';
 import { observer } from 'mobx-react-lite';
 import { dataStore, uiStore, authStore } from '@/store';
-import { Card, Modal } from '@/components/UI';
+import { Card, Modal, Button, Table } from '@/components/UI'; // Возвращены нужные компоненты
 import { readFileAsDataUrl, MAX_PHOTO_FILE_BYTES } from '@/utils';
+import type { TableColumn } from '@/components/UI'; // Возвращен тип для колонок
 import type { Photo, Album, PhotoFormData, AlbumFormData, SelectOption } from '@/types';
 import styles from './AdminPage.module.scss';
 
 type AdminTab = 'photos' | 'albums';
 
 export const AdminPage = observer(() => {
+  // Добавлены обратно все методы, которые используются в таблицах и удалении
   const { 
+    photos,
+    albums,
+    photosLoading,
+    albumsLoading,
+    getAlbumById,
     activeAlbums, 
     createPhoto, 
     updatePhoto, 
+    deletePhoto,
     createAlbum, 
-    updateAlbum 
+    updateAlbum,
+    deleteAlbum
   } = dataStore;
   
   const { isAdmin } = authStore;
@@ -32,7 +41,6 @@ export const AdminPage = observer(() => {
   const imageFileRef = useRef<HTMLInputElement>(null);
   const thumbnailFileRef = useRef<HTMLInputElement>(null);
 
-  // Вызов isAdmin, чтобы избежать warning/error о неиспользуемой переменной
   if (!isAdmin) {
     return <div className={styles.accessDenied}>Доступ запрещен</div>;
   }
@@ -113,28 +121,7 @@ export const AdminPage = observer(() => {
     }
   };
 
-  return (
-    <div className={styles.adminPage}>
-      <Card>
-        {/* Здесь должен быть ваш JSX (разметка страницы, кнопки, таблицы) */}
-        <h1>Панель администратора</h1>
-        <div className={styles.tabs}>
-          <span onClick={() => setActiveTab('photos')}>Фото ({activeTab === 'photos' ? 'активно' : ''})</span>
-          <span onClick={() => setActiveTab('albums')}>Альбомы ({activeTab === 'albums' ? 'активно' : ''})</span>
-        </div>
-        <button onClick={openCreateModal}>Добавить</button>
-      </Card>
-
-      <Modal isOpen={modalOpen} onClose={() => setModalOpen(false)}>
-        {/* Здесь разметка модального окна и кнопка сохранения */}
-        <button onClick={handleSave}>Сохранить</button>
-      </Modal>
-    </div>
-  );
-});
-
-
-
+  // Перенесено внутрь компонента, чтобы был доступ к deletePhoto, deleteAlbum и uiStore
   const handleDelete = async (id: string, kind: 'photo' | 'album') => {
     if (!window.confirm('Вы уверены?')) return;
     try {
@@ -146,15 +133,16 @@ export const AdminPage = observer(() => {
     }
   };
 
-  const photoColumns = [
+  // Перенесено внутрь компонента. Добавлены типы для item (Photo), чтобы TypeScript не ругался на any
+  const photoColumns: TableColumn<Photo>[] = [
     { key: 'title', title: 'Название' },
-    { key: 'albumId', title: 'Альбом', render: item => getAlbumById(item.albumId)?.name || 'Без альбома' },
+    { key: 'albumId', title: 'Альбом', render: (item) => getAlbumById(item.albumId)?.name || 'Без альбома' },
     { key: 'views', title: 'Просмотры' },
     { key: 'downloads', title: 'Скачивания' },
     {
       key: 'id',
       title: 'Действия',
-      render: item => (
+      render: (item) => (
         <div style={{ display: 'flex', gap: '8px' }}>
           <Button size="sm" variant="outline" onClick={() => openEditModal(item)}>Редактировать</Button>
           <Button size="sm" variant="danger" onClick={() => handleDelete(item.id, 'photo')}>Удалить</Button>
@@ -163,13 +151,14 @@ export const AdminPage = observer(() => {
     },
   ];
 
-  const albumColumns = [
+  // Перенесено внутрь компонента. Добавлены типы для item (Album)
+  const albumColumns: TableColumn<Album>[] = [
     { key: 'name', title: 'Название' },
-    { key: 'isPublic', title: 'Статус', render: item => item.isPublic ? 'Публичный' : 'Приватный' },
+    { key: 'isPublic', title: 'Статус', render: (item) => item.isPublic ? 'Публичный' : 'Приватный' },
     {
       key: 'id',
       title: 'Действия',
-      render: item => (
+      render: (item) => (
         <div style={{ display: 'flex', gap: '8px' }}>
           <Button size="sm" variant="outline" onClick={() => openEditModal(item)}>Редактировать</Button>
           <Button size="sm" variant="danger" onClick={() => handleDelete(item.id, 'album')}>Удалить</Button>
@@ -177,6 +166,55 @@ export const AdminPage = observer(() => {
       ),
     },
   ];
+
+  return (
+    <div className={styles.adminPage}>
+      <Card>
+        <h1>Панель администратора</h1>
+        <div className={styles.tabs}>
+          <span 
+            className={activeTab === 'photos' ? styles.activeTab : ''} 
+            onClick={() => setActiveTab('photos')}
+          >
+            Фото
+          </span>
+          <span 
+            className={activeTab === 'albums' ? styles.activeTab : ''} 
+            onClick={() => setActiveTab('albums')}
+          >
+            Альбомы
+          </span>
+        </div>
+        <Button onClick={openCreateModal}>Добавить</Button>
+
+        {/* Интеграция таблиц с учетом загрузки данных */}
+        <div className={styles.tableContainer}>
+          {activeTab === 'photos' ? (
+            <Table 
+              columns={photoColumns} 
+              data={photos} 
+              loading={photosLoading} 
+            />
+          ) : (
+            <Table 
+              columns={albumColumns} 
+              data={albums} 
+              loading={albumsLoading} 
+            />
+          )}
+        </div>
+      </Card>
+
+      <Modal isOpen={modalOpen} onClose={() => setModalOpen(false)}>
+        {/* Разметка модального окна */}
+        <div className={styles.modalActions}>
+          <Button onClick={handleSave}>Сохранить</Button>
+        </div>
+      </Modal>
+    </div>
+  );
+});
+
 
   if (!isAdmin) {
     return <div className={styles.page}><Card><h2>Доступ запрещен</h2><p>У вас нет прав для просмотра этой страницы.</p></Card></div>;
