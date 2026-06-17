@@ -7,23 +7,70 @@ import type { TableColumn } from '@/components/UI';
 import type { Photo, Album, PhotoFormData, AlbumFormData, SelectOption } from '@/types';
 import styles from './AdminPage.module.scss';
 
+// Безопасная функция впекания знака в пиксели через Blob для Vercel
+const applyWatermarkToDataUrl = (dataUrl: string, text: string): Promise<string> => {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous'; 
+    img.src = dataUrl;
+    
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return resolve(dataUrl);
+
+      canvas.width = img.width;
+      canvas.height = img.height;
+      
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
+      ctx.drawImage(img, 0, 0);
+
+      // Крупный адаптивный шрифт (6% от ширины фотографии)
+      const fontSize = Math.max(24, Math.floor(img.width * 0.06));
+      ctx.font = `bold ${fontSize}px sans-serif`;
+      
+      // Полупрозрачный белый цвет
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+
+      // Рисуем надпись по центру
+      ctx.fillText(text, img.width / 2, img.height / 2);
+
+      // Темная обводка букв для читаемости на белом фоне
+      ctx.strokeStyle = 'rgba(0, 0, 0, 0.25)';
+      ctx.lineWidth = Math.max(2, fontSize / 10);
+      ctx.strokeText(text, img.width / 2, img.height / 2);
+
+      canvas.toBlob((blob) => {
+        if (!blob) return resolve(dataUrl);
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.readAsDataURL(blob);
+      }, 'image/jpeg', 0.9);
+    };
+    img.onerror = () => resolve(dataUrl);
+  });
+};
+
 type AdminTab = 'photos' | 'albums';
 
 export const AdminPage = observer(() => {
-  const { photos, albums, photosLoading, albumsLoading, getAlbumById, createPhoto, updatePhoto, deletePhoto, createAlbum, updateAlbum, deleteAlbum, activeAlbums } = dataStore;
-  const { isAdmin } = authStore;
+  const { photos, albums, photosLoading, albumsLoading, getAlbumById, createPhoto, updatePhoto, deletePhoto, createAlbum, updateAlbum, deleteAlbum, activeAlbums } = dataStore as any;
+  const { isAdmin } = authStore as any;
   const [activeTab, setActiveTab] = useState<AdminTab>('photos');
   const [modalOpen, setModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<'create' | 'edit'>('create');
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [photoForm, setPhotoForm] = useState<PhotoFormData>({ title: '', description: '', imageUrl: '', thumbnailUrl: '', albumId: '', tags: [], watermark: false, copyright: '' });
-  const [albumForm, setAlbumForm] = useState<AlbumFormData>({ name: '', description: '', isPublic: true });
+  const [photoForm, setPhotoForm] = useState<any>({ title: '', description: '', imageUrl: '', thumbnailUrl: '', albumId: '', tags: [], watermark: false, copyright: '' });
+  const [albumForm, setAlbumForm] = useState<any>({ name: '', description: '', isPublic: true });
   const imageFileRef = useRef<HTMLInputElement>(null);
   const thumbnailFileRef = useRef<HTMLInputElement>(null);
 
   const albumOptions: SelectOption[] = [
     { value: '', label: 'Без альбома' },
-    ...activeAlbums.map(a => ({ value: a.id, label: a.name })),
+    ...activeAlbums.map((a: any) => ({ value: a.id, label: a.name })),
   ];
 
   const resetForms = () => {
@@ -42,8 +89,8 @@ export const AdminPage = observer(() => {
     }
     try {
       const dataUrl = await readFileAsDataUrl(file);
-      if (kind === 'image') setPhotoForm(prev => ({ ...prev, imageUrl: dataUrl }));
-      else setPhotoForm(prev => ({ ...prev, thumbnailUrl: dataUrl }));
+      if (kind === 'image') setPhotoForm((prev: any) => ({ ...prev, imageUrl: dataUrl }));
+      else setPhotoForm((prev: any) => ({ ...prev, thumbnailUrl: dataUrl }));
     } catch {
       uiStore.showError('Не удалось прочитать изображение');
     }
@@ -51,14 +98,12 @@ export const AdminPage = observer(() => {
 
   const openCreateModal = () => { resetForms(); setModalMode('create'); setModalOpen(true); };
   
-  const openEditModal = (item: Photo | Album) => {
+  const openEditModal = (item: any) => {
     setModalMode('edit'); setEditingId(item.id);
     if (activeTab === 'photos') { 
-      const p = item as Photo; 
-      setPhotoForm({ title: p.title, description: p.description || '', imageUrl: p.imageUrl, thumbnailUrl: p.thumbnailUrl, albumId: p.albumId, tags: p.tags, watermark: p.watermark, copyright: p.copyright }); 
+      setPhotoForm({ title: item.title, description: item.description || '', imageUrl: item.imageUrl, thumbnailUrl: item.thumbnailUrl, albumId: item.albumId, tags: item.tags, watermark: item.watermark, copyright: item.copyright }); 
     } else { 
-      const a = item as Album; 
-      setAlbumForm({ name: a.name, description: a.description || '', isPublic: a.isPublic }); 
+      setAlbumForm({ name: item.name, description: item.description || '', isPublic: item.isPublic }); 
     }
     setModalOpen(true);
   };
@@ -71,10 +116,21 @@ export const AdminPage = observer(() => {
           return;
         }
 
+        let finalImageUrl = photoForm.imageUrl;
+        let finalCopyright = photoForm.copyright;
+
+        // Если стоит галочка водяного знака — впекаем текст прямо в пиксели перед отправкой в Firebase
+        if (photoForm.watermark) {
+          finalCopyright = photoForm.imageUrl; // Прячем чистый оригинал в поле copyright
+          finalImageUrl = await applyWatermarkToDataUrl(photoForm.imageUrl, 'ФОТОГАЛЕРЕЯ'); // Тут вставьте ваш текст
+        }
+
+        const updatedFormData = { ...photoForm, imageUrl: finalImageUrl, copyright: finalCopyright };
+
         if (modalMode === 'create') {
-          await createPhoto(photoForm);
+          await createPhoto(updatedFormData);
         } else {
-          if (editingId) await updatePhoto(editingId, photoForm);
+          if (editingId) await updatePhoto(editingId, updatedFormData);
         }
       } else {
         if (!albumForm.name) {
