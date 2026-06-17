@@ -7,8 +7,8 @@ import type { TableColumn } from '@/components/UI';
 import type { Photo, Album, PhotoFormData, AlbumFormData, SelectOption } from '@/types';
 import styles from './AdminPage.module.scss';
 
-// Безопасная функция впекания знака в пиксели через Blob для Vercel
-const applyWatermarkToDataUrl = (dataUrl: string, text: string): Promise<string> => {
+// Сверхстабильная функция наложения водяного знака без строгих типов
+const applyWatermarkToDataUrl = (dataUrl: any, text: any): Promise<string> => {
   return new Promise((resolve) => {
     const img = new Image();
     img.crossOrigin = 'anonymous'; 
@@ -26,24 +26,20 @@ const applyWatermarkToDataUrl = (dataUrl: string, text: string): Promise<string>
       ctx.imageSmoothingQuality = 'high';
       ctx.drawImage(img, 0, 0);
 
-      // Крупный адаптивный шрифт (6% от ширины фотографии)
       const fontSize = Math.max(24, Math.floor(img.width * 0.06));
       ctx.font = `bold ${fontSize}px sans-serif`;
       
-      // Полупрозрачный белый цвет
       ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
 
-      // Рисуем надпись по центру
       ctx.fillText(text, img.width / 2, img.height / 2);
 
-      // Темная обводка букв для читаемости на белом фоне
       ctx.strokeStyle = 'rgba(0, 0, 0, 0.25)';
       ctx.lineWidth = Math.max(2, fontSize / 10);
       ctx.strokeText(text, img.width / 2, img.height / 2);
 
-      canvas.toBlob((blob) => {
+      canvas.toBlob((blob: any) => {
         if (!blob) return resolve(dataUrl);
         const reader = new FileReader();
         reader.onloadend = () => resolve(reader.result as string);
@@ -119,10 +115,10 @@ export const AdminPage = observer(() => {
         let finalImageUrl = photoForm.imageUrl;
         let finalCopyright = photoForm.copyright;
 
-        // Если стоит галочка водяного знака — впекаем текст прямо в пиксели перед отправкой в Firebase
+        // Жесткое безопасное впекание водяного знака GALLERY перед сохранением
         if (photoForm.watermark) {
-          finalCopyright = photoForm.imageUrl; // Прячем чистый оригинал в поле copyright
-          finalImageUrl = await applyWatermarkToDataUrl(photoForm.imageUrl, 'GALLERY'); // Тут вставьте ваш текст
+          finalCopyright = photoForm.imageUrl; 
+          finalImageUrl = await applyWatermarkToDataUrl(photoForm.imageUrl, 'GALLERY'); 
         }
 
         const updatedFormData = { ...photoForm, imageUrl: finalImageUrl, copyright: finalCopyright };
@@ -147,7 +143,6 @@ export const AdminPage = observer(() => {
       uiStore.showError('Ошибка');
     }
   };
-
   const handleDelete = (id: string) => { uiStore.showConfirm('Удаление', 'Удалить?', async () => {
     if (activeTab === 'photos') await deletePhoto(id); else await deleteAlbum(id);
     uiStore.showSuccess('Удалено');
