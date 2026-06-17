@@ -7,12 +7,10 @@ import type { TableColumn } from '@/components/UI';
 import type { Photo, Album, PhotoFormData, AlbumFormData, SelectOption } from '@/types';
 import styles from './AdminPage.module.scss';
 
-// Гарантированно рабочая функция наложения водяного знака
+// Стабильная функция впекания знака через Blob для работы на Vercel
 const applyWatermarkToDataUrl = (dataUrl: string, text: string): Promise<string> => {
   return new Promise((resolve) => {
     const img = new Image();
-    
-    // КРИТИЧЕСКИ ВАЖНО ДЛЯ ХОСТИНГА: Разрешаем CORS-запросы к Firebase
     img.crossOrigin = 'anonymous'; 
     img.src = dataUrl;
     
@@ -28,24 +26,24 @@ const applyWatermarkToDataUrl = (dataUrl: string, text: string): Promise<string>
       ctx.imageSmoothingQuality = 'high';
       ctx.drawImage(img, 0, 0);
 
-      // Адаптивный размер шрифта (5% от ширины фотографии)
-      const fontSize = Math.max(20, Math.floor(img.width * 0.05));
+      // Адаптивный крупный шрифт (6% от ширины фотографии)
+      const fontSize = Math.max(24, Math.floor(img.width * 0.06));
       ctx.font = `bold ${fontSize}px sans-serif`;
       
-      // Настройка цвета надписи
+      // Яркий белый цвет с 40% прозрачности, чтобы его точно было видно
       ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
 
-      // Текст ровно по центру
+      // Рисуем надпись ровно по центру страницы
       ctx.fillText(text, img.width / 2, img.height / 2);
 
-      // Тёмная обводка
-      ctx.strokeStyle = 'rgba(0, 0, 0, 0.25)';
-      ctx.lineWidth = Math.max(1.5, fontSize / 12);
+      // Жирная темная обводка букв
+      ctx.strokeStyle = 'rgba(0, 0, 0, 0.3)';
+      ctx.lineWidth = Math.max(2, fontSize / 10);
       ctx.strokeText(text, img.width / 2, img.height / 2);
 
-      // Безопасное сохранение через Blob для поддержки всех хостингов
+      // Безопасная конвертация через Blob для хостинга Vercel
       canvas.toBlob((blob) => {
         if (!blob) return resolve(dataUrl);
         const reader = new FileReader();
@@ -85,6 +83,7 @@ export const AdminPage = observer(() => {
     if (thumbnailFileRef.current) thumbnailFileRef.current.value = '';
   };
 
+  // Возвращаем функцию к исходному простому и быстрому чтению файла без условий
   const handleImageFile = async (file: File | undefined, kind: 'image' | 'thumbnail') => {
     if (!file || !file.type.startsWith('image/')) return;
     if (file.size > MAX_PHOTO_FILE_BYTES) {
@@ -114,6 +113,7 @@ export const AdminPage = observer(() => {
     setModalOpen(true);
   };
 
+  // ПРИНУДИТЕЛЬНОЕ ВПЕКАНИЕ ВОТЕРМАРКИ ПЕРЕД ОТПРАВКОЙ В FIREBASE
   const handleSave = async () => {
     try {
       if (activeTab === 'photos') {
@@ -125,12 +125,12 @@ export const AdminPage = observer(() => {
         let finalImageUrl = photoForm.imageUrl;
         let finalCopyright = photoForm.copyright;
 
-        // Накладываем водяной знак, только если горит галочка в форме
+        // Если в форме горит галочка watermark (неважно, когда её нажали!)
         if (photoForm.watermark) {
-          // 1. Сохраняем чистый оригинал в скрытое поле copyright для фотографа
+          // 1. Сохраняем чистый оригинал в поле copyright для фотографа
           finalCopyright = photoForm.imageUrl;
-          // 2. Впечатываем текст (поменяйте 'ДЛЯ SITE.RU' на имя вашего бренда)
-          finalImageUrl = await applyWatermarkToDataUrl(photoForm.imageUrl, 'GALLERYGALLERYGALLERYGALLERY');
+          // 2. Впечатываем водяной знак (измени 'ФОТОГАЛЕРЕЯ' на нужный текст)
+          finalImageUrl = await applyWatermarkToDataUrl(photoForm.imageUrl, 'ФОТОГАЛЕРЕЯ');
         }
 
         const updatedFormData = { ...photoForm, imageUrl: finalImageUrl, copyright: finalCopyright };
