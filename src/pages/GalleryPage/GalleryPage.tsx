@@ -48,14 +48,14 @@ export const GalleryPage = observer(() => {
         <Modal isOpen={!!selectedPhoto} onClose={() => setSelectedPhoto(null)} title={selectedPhoto.title} size="lg">
           <div className={styles.photoViewer}>
             
-            {/* БЛОК ЗАЩИТЫ И СВЕРХБЫСТРОГО НАЛОЖЕНИЯ ЗНАКА */}
+            {/* БЛОК МГНОВЕННОЙ ЗАЩИТЫ И НАЛОЖЕНИЯ ЗНАКА ДЛЯ ХОСТИНГА */}
             <div 
               onContextMenu={preventActions}
               onDragStart={preventActions}
               className="no-screenshot"
               style={{ position: 'relative', display: 'inline-block', overflow: 'hidden' }}
             >
-              {/* Реальное изображение (загружается без багов) */}
+              {/* Оригинальное изображение грузится без сбоев */}
               <img 
                 src={selectedPhoto.imageUrl} 
                 alt={selectedPhoto.title} 
@@ -70,10 +70,10 @@ export const GalleryPage = observer(() => {
                 }}
               />
 
-              {/* ЕСЛИ ОН ГОСТЬ: включаем прозрачный щит и текстовую вотермарку поверх */}
+              {/* Если посетитель — гость: принудительно включаем защиту и вотермарку */}
               {!canDownloadPhotos() && (
                 <>
-                  {/* Прозрачный щит от скачивания */}
+                  {/* Прозрачный невидимый слой поверх фото */}
                   <div
                     onContextMenu={preventActions}
                     style={{
@@ -84,26 +84,24 @@ export const GalleryPage = observer(() => {
                     }}
                   />
 
-                  {/* Крупный водяной знак текстом (показывается, если активен чекбокс фотографа) */}
-                  {selectedPhoto && (
-                    <div style={{
-                      position: 'absolute',
-                      top: '50%',
-                      left: '50%',
-                      transform: 'translate(-50%, -50%)',
-                      color: 'rgba(255, 255, 255, 0.35)', // Белый полупрозрачный
-                      fontSize: 'clamp(20px, 5vw, 48px)', // Адаптивный размер под экран телефона и ПК
-                      fontWeight: 'bold',
-                      fontFamily: 'sans-serif',
-                      letterSpacing: '2px',
-                      pointerEvents: 'none',
-                      zIndex: 3,
-                      textShadow: '0px 0px 4px rgba(0,0,0,0.3)', // Тень для читаемости
-                      whiteSpace: 'nowrap'
-                    }}>
-                      ФОТОГАЛЕРЕЯ
-                    </div>
-                  )}
+                  {/* Крупный водяной знак, который выводится прямо на экране */}
+                  <div style={{
+                    position: 'absolute',
+                    top: '50%',
+                    left: '50%',
+                    transform: 'translate(-50%, -50%)',
+                    color: 'rgba(255, 255, 255, 0.4)', // Белый цвет с прозрачностью
+                    fontSize: 'clamp(24px, 6vw, 54px)', // Адаптивный крупный размер
+                    fontWeight: 'bold',
+                    fontFamily: 'sans-serif',
+                    letterSpacing: '3px',
+                    pointerEvents: 'none',
+                    zIndex: 3,
+                    textShadow: '0px 0px 5px rgba(0,0,0,0.4)', // Тень, чтобы читалось на белом фоне
+                    whiteSpace: 'nowrap'
+                  }}>
+                    ФОТОГАЛЕРЕЯ
+                  </div>
                 </>
               )}
             </div>
