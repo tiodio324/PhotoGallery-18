@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { observer } from 'mobx-react-lite';
 import { dataStore, authStore } from '@/store';
 import { Card, Input, Badge, Modal } from '@/components/UI';
@@ -18,18 +18,7 @@ export const GalleryPage = observer(() => {
   const handleDownload = (photo: Photo) => {
     if (canDownloadPhotos()) {
       incrementDownloads(photo.id);
-      
-      // Скачиваем оригинал, если он сохранен в copyright, иначе обычный файл
-      const downloadUrl = (photo.watermark && photo.copyright && photo.copyright.startsWith('data:image')) 
-        ? photo.copyright 
-        : photo.imageUrl;
-        
-      const link = document.createElement('a');
-      link.href = downloadUrl;
-      link.download = photo.title || 'photo';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      window.open(photo.imageUrl, '_blank');
     }
   };
 
@@ -59,12 +48,14 @@ export const GalleryPage = observer(() => {
         <Modal isOpen={!!selectedPhoto} onClose={() => setSelectedPhoto(null)} title={selectedPhoto.title} size="lg">
           <div className={styles.photoViewer}>
             
+            {/* БЛОК ЗАЩИТЫ И СВЕРХБЫСТРОГО НАЛОЖЕНИЯ ЗНАКА */}
             <div 
               onContextMenu={preventActions}
               onDragStart={preventActions}
               className="no-screenshot"
-              style={{ position: 'relative', display: 'inline-block' }}
+              style={{ position: 'relative', display: 'inline-block', overflow: 'hidden' }}
             >
+              {/* Реальное изображение (загружается без багов) */}
               <img 
                 src={selectedPhoto.imageUrl} 
                 alt={selectedPhoto.title} 
@@ -79,32 +70,54 @@ export const GalleryPage = observer(() => {
                 }}
               />
 
-              {/* Невидимый прозрачный щит поверх фото для гостей */}
+              {/* ЕСЛИ ОН ГОСТЬ: включаем прозрачный щит и текстовую вотермарку поверх */}
               {!canDownloadPhotos() && (
-                <div
-                  onContextMenu={preventActions}
-                  style={{
-                    position: 'absolute',
-                    top: 0, left: 0, width: '100%', height: '100%',
-                    background: 'url("data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7") repeat',
-                    zIndex: 2,
-                  }}
-                />
+                <>
+                  {/* Прозрачный щит от скачивания */}
+                  <div
+                    onContextMenu={preventActions}
+                    style={{
+                      position: 'absolute',
+                      top: 0, left: 0, width: '100%', height: '100%',
+                      background: 'url("data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7") repeat',
+                      zIndex: 2,
+                    }}
+                  />
+
+                  {/* Крупный водяной знак текстом (показывается, если активен чекбокс фотографа) */}
+                  {selectedPhoto.watermark && (
+                    <div style={{
+                      position: 'absolute',
+                      top: '50%',
+                      left: '50%',
+                      transform: 'translate(-50%, -50%)',
+                      color: 'rgba(255, 255, 255, 0.35)', // Белый полупрозрачный
+                      fontSize: 'clamp(20px, 5vw, 48px)', // Адаптивный размер под экран телефона и ПК
+                      fontWeight: 'bold',
+                      fontFamily: 'sans-serif',
+                      letterSpacing: '2px',
+                      pointerEvents: 'none',
+                      zIndex: 3,
+                      textShadow: '0px 0px 4px rgba(0,0,0,0.3)', // Тень для читаемости
+                      whiteSpace: 'nowrap'
+                    }}>
+                      ФОТОГАЛЕРЕЯ
+                    </div>
+                  )}
+                </>
               )}
             </div>
+            {/* КОНЕЦ БЛОКА ЗАЩИТЫ */}
 
             {selectedPhoto.description && <p className={styles.photoDescription}>{selectedPhoto.description}</p>}
             <div className={styles.photoMeta}>
               <span>👁 {selectedPhoto.views}</span>
               <span>⬇ {selectedPhoto.downloads}</span>
-              {/* Показываем копирайт только если это обычный текст, а не закодированная картинка */}
-              {selectedPhoto.copyright && !selectedPhoto.copyright.startsWith('data:image') && (
-                <span>© {selectedPhoto.copyright}</span>
-              )}
+              {selectedPhoto.copyright && <span>© {selectedPhoto.copyright}</span>}
             </div>
             {canDownloadPhotos() && (
               <button className={styles.downloadButton} onClick={() => handleDownload(selectedPhoto)}>
-                Скачать оригинал без вотермарки
+                Скачать фотографию
               </button>
             )}
           </div>
@@ -138,5 +151,4 @@ export const GalleryPage = observer(() => {
       )}
     </div>
   );
-});
 });
