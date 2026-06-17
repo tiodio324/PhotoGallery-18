@@ -3,58 +3,13 @@ import { observer } from 'mobx-react-lite';
 import { dataStore, uiStore, authStore } from '@/store';
 import { Card, Button, Table, Modal, Input, Select } from '@/components/UI';
 import { readFileAsDataUrl, MAX_PHOTO_FILE_BYTES } from '@/utils';
-import type { TableColumn } from '@/components/UI';
-import type { Photo, Album, PhotoFormData, AlbumFormData, SelectOption } from '@/types';
 import styles from './AdminPage.module.scss';
-
-// Сверхстабильная функция наложения водяного знака без строгих типов
-const applyWatermarkToDataUrl = (dataUrl: any, text: any): Promise<string> => {
-  return new Promise((resolve) => {
-    const img = new Image();
-    img.crossOrigin = 'anonymous'; 
-    img.src = dataUrl;
-    
-    img.onload = () => {
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
-      if (!ctx) return resolve(dataUrl);
-
-      canvas.width = img.width;
-      canvas.height = img.height;
-      
-      ctx.imageSmoothingEnabled = true;
-      ctx.imageSmoothingQuality = 'high';
-      ctx.drawImage(img, 0, 0);
-
-      const fontSize = Math.max(24, Math.floor(img.width * 0.06));
-      ctx.font = `bold ${fontSize}px sans-serif`;
-      
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-
-      ctx.fillText(text, img.width / 2, img.height / 2);
-
-      ctx.strokeStyle = 'rgba(0, 0, 0, 0.25)';
-      ctx.lineWidth = Math.max(2, fontSize / 10);
-      ctx.strokeText(text, img.width / 2, img.height / 2);
-
-      canvas.toBlob((blob: any) => {
-        if (!blob) return resolve(dataUrl);
-        const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result as string);
-        reader.readAsDataURL(blob);
-      }, 'image/jpeg', 0.9);
-    };
-    img.onerror = () => resolve(dataUrl);
-  });
-};
 
 type AdminTab = 'photos' | 'albums';
 
 export const AdminPage = observer(() => {
-  const { photos, albums, photosLoading, albumsLoading, getAlbumById, createPhoto, updatePhoto, deletePhoto, createAlbum, updateAlbum, deleteAlbum, activeAlbums } = dataStore as any;
-  const { isAdmin } = authStore as any;
+  const { photos, albums, photosLoading, albumsLoading, getAlbumById, createPhoto, updatePhoto, deletePhoto, createAlbum, updateAlbum, deleteAlbum, activeAlbums } = dataStore;
+  const { isAdmin } = authStore;
   const [activeTab, setActiveTab] = useState<AdminTab>('photos');
   const [modalOpen, setModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<'create' | 'edit'>('create');
@@ -64,9 +19,9 @@ export const AdminPage = observer(() => {
   const imageFileRef = useRef<HTMLInputElement>(null);
   const thumbnailFileRef = useRef<HTMLInputElement>(null);
 
-  const albumOptions: SelectOption[] = [
+  const albumOptions = [
     { value: '', label: 'Без альбома' },
-    ...activeAlbums.map((a: any) => ({ value: a.id, label: a.name })),
+    ...activeAlbums.map(a => ({ value: a.id, label: a.name })),
   ];
 
   const resetForms = () => {
@@ -85,8 +40,8 @@ export const AdminPage = observer(() => {
     }
     try {
       const dataUrl = await readFileAsDataUrl(file);
-      if (kind === 'image') setPhotoForm((prev: any) => ({ ...prev, imageUrl: dataUrl }));
-      else setPhotoForm((prev: any) => ({ ...prev, thumbnailUrl: dataUrl }));
+      if (kind === 'image') setPhotoForm(prev => ({ ...prev, imageUrl: dataUrl }));
+      else setPhotoForm(prev => ({ ...prev, thumbnailUrl: dataUrl }));
     } catch {
       uiStore.showError('Не удалось прочитать изображение');
     }
@@ -112,21 +67,10 @@ export const AdminPage = observer(() => {
           return;
         }
 
-        let finalImageUrl = photoForm.imageUrl;
-        let finalCopyright = photoForm.copyright;
-
-        // Жесткое безопасное впекание водяного знака GALLERY перед сохранением
-        if (photoForm.watermark) {
-          finalCopyright = photoForm.imageUrl; 
-          finalImageUrl = await applyWatermarkToDataUrl(photoForm.imageUrl, 'GALLERY'); 
-        }
-
-        const updatedFormData = { ...photoForm, imageUrl: finalImageUrl, copyright: finalCopyright };
-
         if (modalMode === 'create') {
-          await createPhoto(updatedFormData);
+          await createPhoto(photoForm);
         } else {
-          if (editingId) await updatePhoto(editingId, updatedFormData);
+          if (editingId) await updatePhoto(editingId, photoForm);
         }
       } else {
         if (!albumForm.name) {
@@ -143,6 +87,125 @@ export const AdminPage = observer(() => {
       uiStore.showError('Ошибка');
     }
   };
+
+  const handleDelete = async (id: string, kind: 'photo' | 'album') => {
+    if (!window.confirm('Вы уверены?')) return;
+    try {
+      if (kind === 'photo') await deletePhoto(id);
+      else await deleteAlbum(id);
+      uiStore.showSuccess('Удалено');
+    } catch {
+      uiStore.showError('Ошибка при удалении');
+    }
+  };
+
+  const photoColumns = [
+    { key: 'title', title: 'Название' },
+    { key: 'albumId', title: 'Альбом', render: item => getAlbumById(item.albumId)?.name || 'Без альбома' },
+    { key: 'views', title: 'Просмотры' },
+    { key: 'downloads', title: 'Скачивания' },
+    {
+      key: 'id',
+      title: 'Действия',
+      render: item => (
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <Button size="sm" variant="outline" onClick={() => openEditModal(item)}>Редактировать</Button>
+          <Button size="sm" variant="danger" onClick={() => handleDelete(item.id, 'photo')}>Удалить</Button>
+        </div>
+      ),
+    },
+  ];
+
+  const albumColumns = [
+    { key: 'name', title: 'Название' },
+    { key: 'isPublic', title: 'Статус', render: item => item.isPublic ? 'Публичный' : 'Приватный' },
+    {
+      key: 'id',
+      title: 'Действия',
+      render: item => (
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <Button size="sm" variant="outline" onClick={() => openEditModal(item)}>Редактировать</Button>
+          <Button size="sm" variant="danger" onClick={() => handleDelete(item.id, 'album')}>Удалить</Button>
+        </div>
+      ),
+    },
+  ];
+
+  if (!isAdmin) {
+    return <div className={styles.page}><Card><h2>Доступ запрещен</h2><p>У вас нет прав для просмотра этой страницы.</p></Card></div>;
+  }
+
+  return (
+    <div className={styles.page}>
+      <div className={styles.header}>
+        <div>
+          <h1 className={styles.title}>Панель администратора</h1>
+          <p className={styles.subtitle}>Управление контентом галереи</p>
+        </div>
+        <Button onClick={openCreateModal}>
+          {activeTab === 'photos' ? 'Добавить фотографию' : 'Создать альбом'}
+        </Button>
+      </div>
+
+      <div className={styles.tabs}>
+        <button className={`${styles.tab} ${activeTab === 'photos' ? styles.activeTab : ''}`} onClick={() => setActiveTab('photos')}>Фотографии</button>
+        <button className={`${styles.tab} ${activeTab === 'albums' ? styles.activeTab : ''}`} onClick={() => setActiveTab('albums')}>Альбомы</button>
+      </div>
+
+      {activeTab === 'photos' ? (
+        <Card>
+          <Table columns={photoColumns} data={photos} loading={photosLoading} emptyText="Фотографии еще не добавлены" />
+        </Card>
+      ) : (
+        <Card>
+          <Table columns={albumColumns} data={albums} loading={albumsLoading} emptyText="Альбомы еще не созданы" />
+        </Card>
+      )}
+
+      <Modal isOpen={modalOpen} onClose={() => setModalOpen(false)} title={modalMode === 'create' ? (activeTab === 'photos' ? 'Добавить фотографию' : 'Создать альбом') : 'Редактировать'} size="md">
+        {activeTab === 'photos' ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <Input placeholder="Название фотографии" value={photoForm.title} onChange={e => setPhotoForm(prev => ({ ...prev, title: e.target.value }))} />
+            <Input placeholder="Описание (необязательно)" value={photoForm.description} onChange={e => setPhotoForm(prev => ({ ...prev, description: e.target.value }))} />
+            <Select label="Альбом" value={photoForm.albumId} options={albumOptions} onChange={value => setPhotoForm(prev => ({ ...prev, albumId: value }))} />
+            <Input placeholder="Авторские права / Копирайт" value={photoForm.copyright} onChange={e => setPhotoForm(prev => ({ ...prev, copyright: e.target.value }))} />
+            
+            <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                <input type="checkbox" checked={photoForm.watermark} onChange={e => setPhotoForm(prev => ({ ...prev, watermark: e.target.checked }))} />
+                Включить водяной знак
+              </label>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <label>Основное изображение:</label>
+              <input type="file" ref={imageFileRef} accept="image/*" onChange={e => handleImageFile(e.target.files?.[0], 'image')} />
+              {photoForm.imageUrl && <img src={photoForm.imageUrl} alt="Превью" style={{ maxWidth: '200px', maxHeight: '150px', objectFit: 'contain', marginTop: '8px', borderRadius: '4px' }} />}
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <label>Миниатюра (необязательно):</label>
+              <input type="file" ref={thumbnailFileRef} accept="image/*" onChange={e => handleImageFile(e.target.files?.[0], 'thumbnail')} />
+              {photoForm.thumbnailUrl && <img src={photoForm.thumbnailUrl} alt="Миниатюра" style={{ maxWidth: '100px', maxHeight: '100px', objectFit: 'contain', marginTop: '8px', borderRadius: '4px' }} />}
+            </div>
+
+            <Button onClick={handleSave} style={{ marginTop: '16px' }}>Сохранить</Button>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <Input placeholder="Название альбома" value={albumForm.name} onChange={e => setAlbumForm(prev => ({ ...prev, name: e.target.value }))} />
+            <Input placeholder="Описание альбома" value={albumForm.description} onChange={e => setAlbumForm(prev => ({ ...prev, description: e.target.value }))} />
+            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+              <input type="checkbox" checked={albumForm.isPublic} onChange={e => setAlbumForm(prev => ({ ...prev, isPublic: e.target.checked }))} />
+              Публичный альбом
+            </label>
+            <Button onClick={handleSave} style={{ marginTop: '16px' }}>Сохранить</Button>
+          </div>
+        )}
+      </Modal>
+    </div>
+  );
+});
   const handleDelete = (id: string) => { uiStore.showConfirm('Удаление', 'Удалить?', async () => {
     if (activeTab === 'photos') await deletePhoto(id); else await deleteAlbum(id);
     uiStore.showSuccess('Удалено');
