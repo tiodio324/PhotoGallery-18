@@ -11,7 +11,11 @@ import styles from './AdminPage.module.scss';
 const applyWatermarkToDataUrl = (dataUrl: string, text: string): Promise<string> => {
   return new Promise((resolve) => {
     const img = new Image();
+    
+    // КРИТИЧЕСКИ ВАЖНО ДЛЯ ХОСТИНГА: Разрешаем CORS-запросы к Firebase
+    img.crossOrigin = 'anonymous'; 
     img.src = dataUrl;
+    
     img.onload = () => {
       const canvas = document.createElement('canvas');
       const ctx = canvas.getContext('2d');
@@ -24,26 +28,32 @@ const applyWatermarkToDataUrl = (dataUrl: string, text: string): Promise<string>
       ctx.imageSmoothingQuality = 'high';
       ctx.drawImage(img, 0, 0);
 
-      // Размер букв: 5% от ширины снимка
+      // Адаптивный размер шрифта (5% от ширины фотографии)
       const fontSize = Math.max(20, Math.floor(img.width * 0.05));
       ctx.font = `bold ${fontSize}px sans-serif`;
       
-      // Настройка прозрачного белого цвета текста
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
+      // Настройка цвета надписи
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
 
-      // Выводим ровно в центр экрана
+      // Текст ровно по центру
       ctx.fillText(text, img.width / 2, img.height / 2);
 
-      // Обводка вокруг букв, чтобы текст читался на светлом фоне
-      ctx.strokeStyle = 'rgba(0, 0, 0, 0.2)';
-      ctx.lineWidth = Math.max(1, fontSize / 12);
+      // Тёмная обводка
+      ctx.strokeStyle = 'rgba(0, 0, 0, 0.25)';
+      ctx.lineWidth = Math.max(1.5, fontSize / 12);
       ctx.strokeText(text, img.width / 2, img.height / 2);
 
-      // Переводим холст в надежный формат JPEG (его поддерживают 100% браузеров)
-      resolve(canvas.toDataURL('image/jpeg', 0.9));
+      // Безопасное сохранение через Blob для поддержки всех хостингов
+      canvas.toBlob((blob) => {
+        if (!blob) return resolve(dataUrl);
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.readAsDataURL(blob);
+      }, 'image/jpeg', 0.9);
     };
+    
     img.onerror = () => resolve(dataUrl);
   });
 };
