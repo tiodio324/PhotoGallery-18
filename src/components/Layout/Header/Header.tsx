@@ -7,11 +7,13 @@ export const Header = observer(() => {
   const { isAuthenticated, currentRole, logout, openLoginModal } = authStore;
   const { pageTitle, toggleMobileMenu, mobileMenuOpen, navigate } = navigationStore;
 
-  const getRoleName = (role: string): string => {
+  // Изменили тип аргумента на string | null, чтобы TypeScript не ругался
+  const getRoleName = (role: string | null): string => {
+    if (!role) return 'Фотограф';
     switch (role) {
       case 'admin': return 'Фотограф';
-      
-      default: return 'Гость';
+      case 'teacher': return 'Преподаватель';
+      default: return 'Фотограф';
     }
   };
 
@@ -66,3 +68,4 @@ export const Header = observer(() => {
     </header>
   );
 });
+
