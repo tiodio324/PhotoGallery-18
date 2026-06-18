@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { observer } from 'mobx-react-lite';
 import { authStore } from '@/store';
-import { UserRole } from '@/types'; // Вернули импорт типа для валидации TypeScript
 import { Modal, Button, Input } from '@/components/UI';
 import styles from './LoginModal.module.scss';
 
@@ -11,8 +10,8 @@ export const LoginModal = observer(() => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Конструкция 'as UserRole' явно говорит TypeScript, что это корректный тип роли
-    await login('admin' as UserRole, password); 
+    // Принудительно передаем роль 'admin' при авторизации
+    await login('admin', password);
     if (!authStore.loginError) {
       setPassword('');
     }
@@ -28,7 +27,7 @@ export const LoginModal = observer(() => {
       <form onSubmit={handleSubmit} className={styles.form}>
         <Input 
           type="password" 
-          label="Пароль администратора" 
+          label="Пароль фотографа" 
           placeholder="Введите пароль" 
           value={password} 
           onChange={(e) => setPassword(e.target.value)} 
