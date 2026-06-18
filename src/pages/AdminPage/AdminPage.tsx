@@ -1,49 +1,25 @@
 import { useRef, useState } from 'react';
 import { observer } from 'mobx-react-lite';
 import { dataStore, uiStore, authStore } from '@/store';
-import { Card, Modal, Button, Table } from '@/components/UI'; // Возвращены нужные компоненты
+import { Card, Button, Table, Modal, Input, Select } from '@/components/UI';
 import { readFileAsDataUrl, MAX_PHOTO_FILE_BYTES } from '@/utils';
-import type { TableColumn } from '@/components/UI'; // Возвращен тип для колонок
+import type { TableColumn } from '@/components/UI';
 import type { Photo, Album, PhotoFormData, AlbumFormData, SelectOption } from '@/types';
 import styles from './AdminPage.module.scss';
 
 type AdminTab = 'photos' | 'albums';
 
 export const AdminPage = observer(() => {
-  // Добавлены обратно все методы, которые используются в таблицах и удалении
-  const { 
-    photos,
-    albums,
-    photosLoading,
-    albumsLoading,
-    getAlbumById,
-    activeAlbums, 
-    createPhoto, 
-    updatePhoto, 
-    deletePhoto,
-    createAlbum, 
-    updateAlbum,
-    deleteAlbum
-  } = dataStore;
-  
+  const { photos, albums, photosLoading, albumsLoading, getAlbumById, createPhoto, updatePhoto, deletePhoto, createAlbum, updateAlbum, deleteAlbum, activeAlbums } = dataStore;
   const { isAdmin } = authStore;
   const [activeTab, setActiveTab] = useState<AdminTab>('photos');
   const [modalOpen, setModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<'create' | 'edit'>('create');
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [photoForm, setPhotoForm] = useState<PhotoFormData>({ 
-    title: '', description: '', imageUrl: '', thumbnailUrl: '', albumId: '', tags: [], watermark: false, copyright: '' 
-  });
-  const [albumForm, setAlbumForm] = useState<AlbumFormData>({ 
-    name: '', description: '', isPublic: true 
-  });
-  
+  const [photoForm, setPhotoForm] = useState<PhotoFormData>({ title: '', description: '', imageUrl: '', thumbnailUrl: '', albumId: '', tags: [], watermark: false, copyright: '' });
+  const [albumForm, setAlbumForm] = useState<AlbumFormData>({ name: '', description: '', isPublic: true });
   const imageFileRef = useRef<HTMLInputElement>(null);
   const thumbnailFileRef = useRef<HTMLInputElement>(null);
-
-  if (!isAdmin) {
-    return <div className={styles.accessDenied}>Доступ запрещен</div>;
-  }
 
   const albumOptions: SelectOption[] = [
     { value: '', label: 'Без альбома' },
@@ -72,300 +48,27 @@ export const AdminPage = observer(() => {
       uiStore.showError('Не удалось прочитать изображение');
     }
   };
-
-  const openCreateModal = () => { 
-    resetForms(); 
-    setModalMode('create'); 
-    setModalOpen(true); 
-  };
-  
+  const openCreateModal = () => { resetForms(); setModalMode('create'); setModalOpen(true); };
   const openEditModal = (item: Photo | Album) => {
-    setModalMode('edit'); 
-    setEditingId(item.id);
-    if (activeTab === 'photos') { 
-      const p = item as Photo; 
-      setPhotoForm({ title: p.title, description: p.description || '', imageUrl: p.imageUrl, thumbnailUrl: p.thumbnailUrl, albumId: p.albumId, tags: p.tags, watermark: p.watermark, copyright: p.copyright }); 
-    } else { 
-      const a = item as Album; 
-      setAlbumForm({ name: a.name, description: a.description || '', isPublic: a.isPublic }); 
-    }
+    setModalMode('edit'); setEditingId(item.id);
+    if (activeTab === 'photos') { const p = item as Photo; setPhotoForm({ title: p.title, description: p.description || '', imageUrl: p.imageUrl, thumbnailUrl: p.thumbnailUrl, albumId: p.albumId, tags: p.tags, watermark: p.watermark, copyright: p.copyright }); }
+    else { const a = item as Album; setAlbumForm({ name: a.name, description: a.description || '', isPublic: a.isPublic }); }
     setModalOpen(true);
   };
 
   const handleSave = async () => {
     try {
       if (activeTab === 'photos') {
-        if (!photoForm.title || !photoForm.imageUrl) {
-          uiStore.showError('Заполните обязательные поля');
-          return;
-        }
-
-        if (modalMode === 'create') {
-          await createPhoto(photoForm);
-        } else {
-          if (editingId) await updatePhoto(editingId, photoForm);
-        }
+        if (!photoForm.title || !photoForm.imageUrl) { uiStore.showError('Заполните обязательные поля'); return; }
+        if (modalMode === 'create') await createPhoto(photoForm); else if (editingId) await updatePhoto(editingId, photoForm);
       } else {
-        if (!albumForm.name) {
-          uiStore.showError('Введите название');
-          return;
-        }
-        if (modalMode === 'create') await createAlbum(albumForm);
-        else if (editingId) await updateAlbum(editingId, albumForm);
+        if (!albumForm.name) { uiStore.showError('Введите название'); return; }
+        if (modalMode === 'create') await createAlbum(albumForm); else if (editingId) await updateAlbum(editingId, albumForm);
       }
-      uiStore.showSuccess('Сохранено');
-      setModalOpen(false);
-      resetForms();
-    } catch {
-      uiStore.showError('Ошибка');
-    }
+      uiStore.showSuccess('Сохранено'); setModalOpen(false); resetForms();
+    } catch { uiStore.showError('Ошибка'); }
   };
 
-  // Перенесено внутрь компонента, чтобы был доступ к deletePhoto, deleteAlbum и uiStore
-  const handleDelete = async (id: string, kind: 'photo' | 'album') => {
-    if (!window.confirm('Вы уверены?')) return;
-    try {
-      if (kind === 'photo') await deletePhoto(id);
-      else await deleteAlbum(id);
-      uiStore.showSuccess('Удалено');
-    } catch {
-      uiStore.showError('Ошибка при удалении');
-    }
-  };
-
-  // Перенесено внутрь компонента. Добавлены типы для item (Photo), чтобы TypeScript не ругался на any
-  const photoColumns: TableColumn<Photo>[] = [
-    { key: 'title', title: 'Название' },
-    { key: 'albumId', title: 'Альбом', render: (item) => getAlbumById(item.albumId)?.name || 'Без альбома' },
-    { key: 'views', title: 'Просмотры' },
-    { key: 'downloads', title: 'Скачивания' },
-    {
-      key: 'id',
-      title: 'Действия',
-      render: (item) => (
-        <div style={{ display: 'flex', gap: '8px' }}>
-          <Button size="sm" variant="outline" onClick={() => openEditModal(item)}>Редактировать</Button>
-          <Button size="sm" variant="danger" onClick={() => handleDelete(item.id, 'photo')}>Удалить</Button>
-        </div>
-      ),
-    },
-  ];
-
-  // Перенесено внутрь компонента. Добавлены типы для item (Album)
-  const albumColumns: TableColumn<Album>[] = [
-    { key: 'name', title: 'Название' },
-    { key: 'isPublic', title: 'Статус', render: (item) => item.isPublic ? 'Публичный' : 'Приватный' },
-    {
-      key: 'id',
-      title: 'Действия',
-      render: (item) => (
-        <div style={{ display: 'flex', gap: '8px' }}>
-          <Button size="sm" variant="outline" onClick={() => openEditModal(item)}>Редактировать</Button>
-          <Button size="sm" variant="danger" onClick={() => handleDelete(item.id, 'album')}>Удалить</Button>
-        </div>
-      ),
-    },
-  ];
-
-  return (
-    <div className={styles.adminPage}>
-      <Card>
-        <h1>Панель администратора</h1>
-        <div className={styles.tabs}>
-          <span 
-            className={activeTab === 'photos' ? styles.activeTab : ''} 
-            onClick={() => setActiveTab('photos')}
-          >
-            Фото
-          </span>
-          <span 
-            className={activeTab === 'albums' ? styles.activeTab : ''} 
-            onClick={() => setActiveTab('albums')}
-          >
-            Альбомы
-          </span>
-        </div>
-        <Button onClick={openCreateModal}>Добавить</Button>
-
-        {/* Интеграция таблиц с учетом загрузки данных */}
-        <div className={styles.tableContainer}>
-          {activeTab === 'photos' ? (
-            <Table 
-              columns={photoColumns} 
-              data={photos} 
-              loading={photosLoading} 
-            />
-          ) : (
-            <Table 
-              columns={albumColumns} 
-              data={albums} 
-              loading={albumsLoading} 
-            />
-          )}
-        </div>
-      </Card>
-
-      <Modal isOpen={modalOpen} onClose={() => setModalOpen(false)}>
-        {/* Разметка модального окна */}
-        <div className={styles.modalActions}>
-          <Button onClick={handleSave}>Сохранить</Button>
-        </div>
-      </Modal>
-    </div>
-  );
-});
-
-
-  if (!isAdmin) {
-    return <div className={styles.page}><Card><h2>Доступ запрещен</h2><p>У вас нет прав для просмотра этой страницы.</p></Card></div>;
-  }
-
-  return (
-    <div className={styles.page}>
-      <div className={styles.header}>
-        <div>
-          <h1 className={styles.title}>Панель администратора</h1>
-          <p className={styles.subtitle}>Управление контентом галереи</p>
-        </div>
-        <Button onClick={openCreateModal}>
-          {activeTab === 'photos' ? 'Добавить фотографию' : 'Создать альбом'}
-        </Button>
-      </div>
-
-      <div className={styles.tabs}>
-        <button className={`${styles.tab} ${activeTab === 'photos' ? styles.activeTab : ''}`} onClick={() => setActiveTab('photos')}>Фотографии</button>
-        <button className={`${styles.tab} ${activeTab === 'albums' ? styles.activeTab : ''}`} onClick={() => setActiveTab('albums')}>Альбомы</button>
-      </div>
-
-      {activeTab === 'photos' ? (
-        <Card>
-          <Table columns={photoColumns} data={photos} loading={photosLoading} emptyText="Фотографии еще не добавлены" />
-        </Card>
-      ) : (
-        <Card>
-          <Table columns={albumColumns} data={albums} loading={albumsLoading} emptyText="Альбомы еще не созданы" />
-        </Card>
-      )}
-
-      <Modal isOpen={modalOpen} onClose={() => setModalOpen(false)} title={modalMode === 'create' ? (activeTab === 'photos' ? 'Добавить фотографию' : 'Создать альбом') : 'Редактировать'} size="md">
-        {activeTab === 'photos' ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <Input placeholder="Название фотографии" value={photoForm.title} onChange={e => setPhotoForm(prev => ({ ...prev, title: e.target.value }))} />
-            <Input placeholder="Описание (необязательно)" value={photoForm.description} onChange={e => setPhotoForm(prev => ({ ...prev, description: e.target.value }))} />
-            <Select label="Альбом" value={photoForm.albumId} options={albumOptions} onChange={value => setPhotoForm(prev => ({ ...prev, albumId: value }))} />
-            <Input placeholder="Авторские права / Копирайт" value={photoForm.copyright} onChange={e => setPhotoForm(prev => ({ ...prev, copyright: e.target.value }))} />
-            
-            <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
-                <input type="checkbox" checked={photoForm.watermark} onChange={e => setPhotoForm(prev => ({ ...prev, watermark: e.target.checked }))} />
-                Включить водяной знак
-              </label>
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <label>Основное изображение:</label>
-              <input type="file" ref={imageFileRef} accept="image/*" onChange={e => handleImageFile(e.target.files?.[0], 'image')} />
-              {photoForm.imageUrl && <img src={photoForm.imageUrl} alt="Превью" style={{ maxWidth: '200px', maxHeight: '150px', objectFit: 'contain', marginTop: '8px', borderRadius: '4px' }} />}
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <label>Миниатюра (необязательно):</label>
-              <input type="file" ref={thumbnailFileRef} accept="image/*" onChange={e => handleImageFile(e.target.files?.[0], 'thumbnail')} />
-              {photoForm.thumbnailUrl && <img src={photoForm.thumbnailUrl} alt="Миниатюра" style={{ maxWidth: '100px', maxHeight: '100px', objectFit: 'contain', marginTop: '8px', borderRadius: '4px' }} />}
-            </div>
-
-            <Button onClick={handleSave} style={{ marginTop: '16px' }}>Сохранить</Button>
-          </div>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <Input placeholder="Название альбома" value={albumForm.name} onChange={e => setAlbumForm(prev => ({ ...prev, name: e.target.value }))} />
-            <Input placeholder="Описание альбома" value={albumForm.description} onChange={e => setAlbumForm(prev => ({ ...prev, description: e.target.value }))} />
-            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
-              <input type="checkbox" checked={albumForm.isPublic} onChange={e => setAlbumForm(prev => ({ ...prev, isPublic: e.target.checked }))} />
-              Публичный альбом
-            </label>
-            <Button onClick={handleSave} style={{ marginTop: '16px' }}>Сохранить</Button>
-          </div>
-        )}
-      </Modal>
-    </div>
-  );
-});
-  if (!isAdmin) {
-    return <div className={styles.page}><Card><h2>Доступ запрещен</h2><p>У вас нет прав для просмотра этой страницы.</p></Card></div>;
-  }
-
-  return (
-    <div className={styles.page}>
-      <div className={styles.header}>
-        <div>
-          <h1 className={styles.title}>Панель администратора</h1>
-          <p className={styles.subtitle}>Управление контентом галереи</p>
-        </div>
-        <Button onClick={openCreateModal}>
-          {activeTab === 'photos' ? 'Добавить фотографию' : 'Создать альбом'}
-        </Button>
-      </div>
-
-      <div className={styles.tabs}>
-        <button className={`${styles.tab} ${activeTab === 'photos' ? styles.activeTab : ''}`} onClick={() => setActiveTab('photos')}>Фотографии</button>
-        <button className={`${styles.tab} ${activeTab === 'albums' ? styles.activeTab : ''}`} onClick={() => setActiveTab('albums')}>Альбомы</button>
-      </div>
-
-      {activeTab === 'photos' ? (
-        <Card>
-          <Table columns={photoColumns} data={photos} loading={photosLoading} emptyText="Фотографии еще не добавлены" />
-        </Card>
-      ) : (
-        <Card>
-          <Table columns={albumColumns} data={albums} loading={albumsLoading} emptyText="Альбомы еще не созданы" />
-        </Card>
-      )}
-
-      <Modal isOpen={modalOpen} onClose={() => setModalOpen(false)} title={modalMode === 'create' ? (activeTab === 'photos' ? 'Добавить фотографию' : 'Создать альбом') : 'Редактировать'} size="md">
-        {activeTab === 'photos' ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <Input placeholder="Название фотографии" value={photoForm.title} onChange={e => setPhotoForm(prev => ({ ...prev, title: e.target.value }))} />
-            <Input placeholder="Описание (необязательно)" value={photoForm.description} onChange={e => setPhotoForm(prev => ({ ...prev, description: e.target.value }))} />
-            <Select label="Альбом" value={photoForm.albumId} options={albumOptions} onChange={value => setPhotoForm(prev => ({ ...prev, albumId: value }))} />
-            <Input placeholder="Авторские права / Копирайт" value={photoForm.copyright} onChange={e => setPhotoForm(prev => ({ ...prev, copyright: e.target.value }))} />
-            
-            <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
-                <input type="checkbox" checked={photoForm.watermark} onChange={e => setPhotoForm(prev => ({ ...prev, watermark: e.target.checked }))} />
-                Включить водяной знак
-              </label>
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <label>Основное изображение:</label>
-              <input type="file" ref={imageFileRef} accept="image/*" onChange={e => handleImageFile(e.target.files?.[0], 'image')} />
-              {photoForm.imageUrl && <img src={photoForm.imageUrl} alt="Превью" style={{ maxWidth: '200px', maxHeight: '150px', objectFit: 'contain', marginTop: '8px', borderRadius: '4px' }} />}
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <label>Миниатюра (необязательно):</label>
-              <input type="file" ref={thumbnailFileRef} accept="image/*" onChange={e => handleImageFile(e.target.files?.[0], 'thumbnail')} />
-              {photoForm.thumbnailUrl && <img src={photoForm.thumbnailUrl} alt="Миниатюра" style={{ maxWidth: '100px', maxHeight: '100px', objectFit: 'contain', marginTop: '8px', borderRadius: '4px' }} />}
-            </div>
-
-            <Button onClick={handleSave} style={{ marginTop: '16px' }}>Сохранить</Button>
-          </div>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <Input placeholder="Название альбома" value={albumForm.name} onChange={e => setAlbumForm(prev => ({ ...prev, name: e.target.value }))} />
-            <Input placeholder="Описание альбома" value={albumForm.description} onChange={e => setAlbumForm(prev => ({ ...prev, description: e.target.value }))} />
-            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
-              <input type="checkbox" checked={albumForm.isPublic} onChange={e => setAlbumForm(prev => ({ ...prev, isPublic: e.target.checked }))} />
-              Публичный альбом
-            </label>
-            <Button onClick={handleSave} style={{ marginTop: '16px' }}>Сохранить</Button>
-          </div>
-        )}
-      </Modal>
-    </div>
-  );
-});
   const handleDelete = (id: string) => { uiStore.showConfirm('Удаление', 'Удалить?', async () => {
     if (activeTab === 'photos') await deletePhoto(id); else await deleteAlbum(id);
     uiStore.showSuccess('Удалено');
@@ -443,6 +146,7 @@ export const AdminPage = observer(() => {
       </Modal>
     </div>
   );
+});
 });
 
 
