@@ -7,9 +7,7 @@ export const Header = observer(() => {
   const { isAuthenticated, currentRole, logout, openLoginModal } = authStore;
   const { pageTitle, toggleMobileMenu, mobileMenuOpen, navigate } = navigationStore;
 
-  // Изменили тип аргумента на string | null, чтобы TypeScript не ругался
-  const getRoleName = (role: string | null): string => {
-    if (!role) return 'Фотограф';
+  const getRoleName = (role: string): string => {
     switch (role) {
       case 'admin': return 'Фотограф';
       case 'teacher': return 'Преподаватель';
