@@ -7,6 +7,47 @@ import type { TableColumn } from '@/components/UI';
 import type { Photo, Album, PhotoFormData, AlbumFormData, SelectOption } from '@/types';
 import styles from './AdminPage.module.scss';
 
+// Гарантированно рабочая функция наложения водяного знака
+const applyWatermarkToDataUrl = (dataUrl: string, text: string): Promise<string> => {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.src = dataUrl;
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return resolve(dataUrl);
+
+      canvas.width = img.width;
+      canvas.height = img.height;
+      
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
+      ctx.drawImage(img, 0, 0);
+
+      // Размер букв: 5% от ширины снимка
+      const fontSize = Math.max(20, Math.floor(img.width * 0.05));
+      ctx.font = `bold ${fontSize}px sans-serif`;
+      
+      // Настройка прозрачного белого цвета текста
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+
+      // Выводим ровно в центр экрана
+      ctx.fillText(text, img.width / 2, img.height / 2);
+
+      // Обводка вокруг букв, чтобы текст читался на светлом фоне
+      ctx.strokeStyle = 'rgba(0, 0, 0, 0.2)';
+      ctx.lineWidth = Math.max(1, fontSize / 12);
+      ctx.strokeText(text, img.width / 2, img.height / 2);
+
+      // Переводим холст в надежный формат JPEG (его поддерживают 100% браузеров)
+      resolve(canvas.toDataURL('image/jpeg', 0.9));
+    };
+    img.onerror = () => resolve(dataUrl);
+  });
+};
+
 type AdminTab = 'photos' | 'albums';
 
 export const AdminPage = observer(() => {
@@ -48,25 +89,61 @@ export const AdminPage = observer(() => {
       uiStore.showError('Не удалось прочитать изображение');
     }
   };
+
   const openCreateModal = () => { resetForms(); setModalMode('create'); setModalOpen(true); };
+  
   const openEditModal = (item: Photo | Album) => {
     setModalMode('edit'); setEditingId(item.id);
-    if (activeTab === 'photos') { const p = item as Photo; setPhotoForm({ title: p.title, description: p.description || '', imageUrl: p.imageUrl, thumbnailUrl: p.thumbnailUrl, albumId: p.albumId, tags: p.tags, watermark: p.watermark, copyright: p.copyright }); }
-    else { const a = item as Album; setAlbumForm({ name: a.name, description: a.description || '', isPublic: a.isPublic }); }
+    if (activeTab === 'photos') { 
+      const p = item as Photo; 
+      setPhotoForm({ title: p.title, description: p.description || '', imageUrl: p.imageUrl, thumbnailUrl: p.thumbnailUrl, albumId: p.albumId, tags: p.tags, watermark: p.watermark, copyright: p.copyright }); 
+    } else { 
+      const a = item as Album; 
+      setAlbumForm({ name: a.name, description: a.description || '', isPublic: a.isPublic }); 
+    }
     setModalOpen(true);
   };
 
   const handleSave = async () => {
     try {
       if (activeTab === 'photos') {
-        if (!photoForm.title || !photoForm.imageUrl) { uiStore.showError('Заполните обязательные поля'); return; }
-        if (modalMode === 'create') await createPhoto(photoForm); else if (editingId) await updatePhoto(editingId, photoForm);
+        if (!photoForm.title || !photoForm.imageUrl) {
+          uiStore.showError('Заполните обязательные поля');
+          return;
+        }
+
+        let finalImageUrl = photoForm.imageUrl;
+        let finalCopyright = photoForm.copyright;
+
+        // Накладываем водяной знак, только если горит галочка в форме
+        if (photoForm.watermark) {
+          // 1. Сохраняем чистый оригинал в скрытое поле copyright для фотографа
+          finalCopyright = photoForm.imageUrl;
+          // 2. Впечатываем текст (поменяйте 'ДЛЯ SITE.RU' на имя вашего бренда)
+          finalImageUrl = await applyWatermarkToDataUrl(photoForm.imageUrl, 'GALLERYGAL');
+        }
+
+        const updatedFormData = { ...photoForm, imageUrl: finalImageUrl, copyright: finalCopyright };
+
+        if (modalMode === 'create') {
+          await createPhoto(updatedFormData);
+        } else {
+          if (editingId) await updatePhoto(editingId, updatedFormData);
+        }
       } else {
-        if (!albumForm.name) { uiStore.showError('Введите название'); return; }
-        if (modalMode === 'create') await createAlbum(albumForm); else if (editingId) await updateAlbum(editingId, albumForm);
+        if (!albumForm.name) {
+          uiStore.showError('Введите название');
+          return;
+        }
+        if (modalMode === 'create') await createAlbum(albumForm);
+        else if (editingId) await updateAlbum(editingId, albumForm);
       }
-      uiStore.showSuccess('Сохранено'); setModalOpen(false); resetForms();
-    } catch { uiStore.showError('Ошибка'); }
+      uiStore.showSuccess('Сохранено');
+      setModalOpen(false);
+      resetForms();
+    } catch {
+      uiStore.showError('Ошибка');
+    }
   };
 
   const handleDelete = (id: string) => { uiStore.showConfirm('Удаление', 'Удалить?', async () => {
@@ -147,6 +224,6 @@ export const AdminPage = observer(() => {
     </div>
   );
 });
-});
+
 
 
