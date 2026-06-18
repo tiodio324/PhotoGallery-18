@@ -1,13 +1,18 @@
 import { useState } from 'react';
 import { observer } from 'mobx-react-lite';
-import { dataStore, authStore } from '@/store';
-import { Card, Input, Badge, Modal } from '@/components/UI';
+import { dataStore, authStore } from '../../store'; // Исправили путь @/store
+import { Card, Input, Badge, Modal } from '../../components/UI'; // Исправили путь @/components/UI
 import styles from './GalleryPage.module.scss';
 
 export const GalleryPage = observer(() => {
   const { filteredPhotos, getAlbumById, incrementViews, filters, setFilter } = dataStore as any;
- const { canDownloadPhotos } = authStore as any;
+  const { canDownloadPhotos } = authStore as any;
   const [selectedPhoto, setSelectedPhoto] = useState<any>(null);
+
+  const handlePhotoClick = (photo: any) => {
+    setSelectedPhoto(photo);
+    incrementViews(photo.id);
+  };
 
   const preventActions = (e: React.MouseEvent | React.TouchEvent) => {
     if (!canDownloadPhotos()) {
@@ -22,7 +27,7 @@ export const GalleryPage = observer(() => {
     const album = getAlbumById(photo.albumId);
     if (!album) return true;
 
-    const albumNameLower = album.name.toLowerCase();
+    const albumNameLower = album.name ? album.name.toLowerCase() : '';
     const isPrivateAlbum = 
       albumNameLower === 'личное' || 
       albumNameLower === 'private' ||
@@ -59,7 +64,6 @@ export const GalleryPage = observer(() => {
               className="no-screenshot"
               style={{ position: 'relative', display: 'inline-block', overflow: 'hidden' }}
             >
-              {/* Оригинальное изображение */}
               <img 
                 src={selectedPhoto.imageUrl} 
                 alt={selectedPhoto.title} 
@@ -74,10 +78,8 @@ export const GalleryPage = observer(() => {
                 }}
               />
 
-              {/* Если посетитель — гость: принудительно включаем защиту и вотермарку */}
               {!canDownloadPhotos() && (
                 <>
-                  {/* Прозрачный невидимый слой поверх фото */}
                   <div
                     onContextMenu={preventActions}
                     style={{
@@ -88,7 +90,6 @@ export const GalleryPage = observer(() => {
                     }}
                   />
 
-                  {/* Крупный водяной знак, который выводится прямо на экране */}
                   <div style={{
                     position: 'absolute',
                     top: '50%',
@@ -114,7 +115,6 @@ export const GalleryPage = observer(() => {
             <div className={styles.photoMeta}>
               <span>👁 {selectedPhoto.views}</span>
               <span>⬇ {selectedPhoto.downloads}</span>
-              {/* Принудительно привели копирайт к типу String, чтобыstarts-with не ломал компиляцию */}
               {selectedPhoto.copyright && !String(selectedPhoto.copyright).startsWith('data:image') && (
                 <span>© {selectedPhoto.copyright}</span>
               )}
@@ -141,7 +141,6 @@ export const GalleryPage = observer(() => {
                 <div className={styles.photoStats}>
                   <span>👁 {photo.views}</span>
                   <span>⬇ {photo.downloads}</span>
-                  {/* Принудительно привели копирайт к типу String, чтобы скрыть картинку base64 из карточки */}
                   {photo.copyright && !String(photo.copyright).startsWith('data:image') && (
                     <span>© {photo.copyright}</span>
                   )}
@@ -154,7 +153,4 @@ export const GalleryPage = observer(() => {
       )}
     </div>
   );
-});
-
-
 });
