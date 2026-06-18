@@ -1,12 +1,8 @@
 import { useState } from 'react';
 import { observer } from 'mobx-react-lite';
 import { authStore } from '@/store';
-import { UserRole } from '@/types';
 import { Modal, Button, Input } from '@/components/UI';
 import styles from './LoginModal.module.scss';
-
-// Экспортируем тип-заглушку на случай, если его кто-то импортирует в проекте
-export type LoginRole = Exclude<UserRole, 'viewer'>;
 
 export const LoginModal = observer(() => {
   const { loginModalOpen, closeLoginModal, login, loginError, isLoading } = authStore;
@@ -14,7 +10,6 @@ export const LoginModal = observer(() => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Приводим к any, чтобы обойти любые строгие проверки методов в authStore
     await (login as any)('admin', password); 
     if (!authStore.loginError) {
       setPassword('');
@@ -51,3 +46,4 @@ export const LoginModal = observer(() => {
     </Modal>
   );
 });
+
