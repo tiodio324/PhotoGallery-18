@@ -30,6 +30,12 @@
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
   border: none;
   animation: slideIn 300ms ease;
+  background-color: #1a1a1a; // твой темный фон
+  color: #ffffff !important;   // ПРИНУДИТЕЛЬНО ДЕЛАЕМ ТЕКСТ БЕЛЫМ
+
+  .text, .message {
+    color: #ffffff !important;
+  }
 }
 
 .success {
