@@ -20,6 +20,23 @@ export const GalleryPage = observer(() => {
     }
   };
 
+  // ЧИСТАЯ ФИЛЬТРАЦИЯ: скрываем от гостей карточки из личных альбомов
+  const displayedPhotos = filteredPhotos.filter((photo: any) => {
+    if (canDownloadPhotos()) return true; // Фотограф видит абсолютно всё
+    
+    const album = getAlbumById(photo.albumId);
+    if (!album) return true;
+
+    const albumNameLower = album.name.toLowerCase();
+    const isPrivateAlbum = 
+      albumNameLower === 'личное' || 
+      albumNameLower === 'private' ||
+      album.isPrivate === true || 
+      album.isPublic === false;
+
+    return !isPrivateAlbum; // Гости видят только публичные альбомы
+  });
+
   return (
     <div className={styles.page}>
       {!canDownloadPhotos() && (
@@ -40,7 +57,7 @@ export const GalleryPage = observer(() => {
         <Modal isOpen={!!selectedPhoto} onClose={() => setSelectedPhoto(null)} title={selectedPhoto.title} size="lg">
           <div className={styles.photoViewer}>
             
-            {/* БЛОК МГНОВЕННОЙ ЗАЩИТЫ И НАЛОЖЕНИЯ ЗНАКА */}
+            {/* БЛОК МГНОВЕННОЙ ЗАЩИТЫ И НАЛОЖЕНИЯ ЗНАКА (СОХРАНЕН ПОЛНОСТЬЮ) */}
             <div 
               onContextMenu={preventActions}
               onDragStart={preventActions}
@@ -108,7 +125,8 @@ export const GalleryPage = observer(() => {
         </Modal>
       ) : (
         <div className={styles.photosGrid}>
-          {filteredPhotos.map((photo: any) => (
+          {/* ЗАМЕНИЛИ filteredPhotos НА ОЧИЩЕННЫЙ МАССИВ displayedPhotos */}
+          {displayedPhotos.map((photo: any) => (
             <Card key={photo.id} className={styles.photoCard} hoverable onClick={() => handlePhotoClick(photo)}>
               <div 
                 className={`${styles.photoThumbnail} no-screenshot`}
@@ -130,7 +148,7 @@ export const GalleryPage = observer(() => {
               </div>
             </Card>
           ))}
-          {filteredPhotos.length === 0 && <p className={styles.empty}>Фотографии не найдены</p>}
+          {displayedPhotos.length === 0 && <p className={styles.empty}>Фотографии не найдены</p>}
         </div>
       )}
     </div>
