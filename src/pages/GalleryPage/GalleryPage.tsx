@@ -119,13 +119,15 @@ export const GalleryPage = observer(() => {
             <div className={styles.photoMeta}>
               <span>👁 {selectedPhoto.views}</span>
               <span>⬇ {selectedPhoto.downloads}</span>
-              {selectedPhoto.copyright && <span>© {selectedPhoto.copyright}</span>}
+              {/* СКРЫТИЕ BASE64 ИЗ МОДАЛЬНОГО ОКНА */}
+              {selectedPhoto.copyright && !selectedPhoto.copyright.startsWith('data:image') && (
+                <span>© {selectedPhoto.copyright}</span>
+              )}
             </div>
           </div>
         </Modal>
       ) : (
         <div className={styles.photosGrid}>
-          {/* ЗАМЕНИЛИ filteredPhotos НА ОЧИЩЕННЫЙ МАССИВ displayedPhotos */}
           {displayedPhotos.map((photo: any) => (
             <Card key={photo.id} className={styles.photoCard} hoverable onClick={() => handlePhotoClick(photo)}>
               <div 
@@ -144,6 +146,10 @@ export const GalleryPage = observer(() => {
                 <div className={styles.photoStats}>
                   <span>👁 {photo.views}</span>
                   <span>⬇ {photo.downloads}</span>
+                  {/* СКРЫТИЕ BASE64 ИЗ СПИСКА КАРТОЧЕК */}
+                  {photo.copyright && !photo.copyright.startsWith('data:image') && (
+                    <span className={styles.copyrightText}>© {photo.copyright}</span>
+                  )}
                 </div>
               </div>
             </Card>
@@ -153,4 +159,6 @@ export const GalleryPage = observer(() => {
       )}
     </div>
   );
+});
+
 });
