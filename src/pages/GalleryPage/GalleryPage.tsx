@@ -6,13 +6,8 @@ import styles from './GalleryPage.module.scss';
 
 export const GalleryPage = observer(() => {
   const { filteredPhotos, getAlbumById, incrementViews, filters, setFilter } = dataStore as any;
-  const { canDownloadPhotos } = authStore as any;
+ const { canDownloadPhotos } = authStore as any;
   const [selectedPhoto, setSelectedPhoto] = useState<any>(null);
-
-  const handlePhotoClick = (photo: any) => {
-    setSelectedPhoto(photo);
-    incrementViews(photo.id);
-  };
 
   const preventActions = (e: React.MouseEvent | React.TouchEvent) => {
     if (!canDownloadPhotos()) {
