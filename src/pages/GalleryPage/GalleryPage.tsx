@@ -57,7 +57,7 @@ export const GalleryPage = observer(() => {
         <Modal isOpen={!!selectedPhoto} onClose={() => setSelectedPhoto(null)} title={selectedPhoto.title} size="lg">
           <div className={styles.photoViewer}>
             
-            {/* БЛОК МГНОВЕННОЙ ЗАЩИТЫ И НАЛОЖЕНИЯ ЗНАКА (СОХРАНЕН ПОЛНОСТЬЮ) */}
+            {/* БЛОК МГНОВЕННОЙ ЗАЩИТЫ И НАЛОЖЕНИЯ ЗНАКА */}
             <div 
               onContextMenu={preventActions}
               onDragStart={preventActions}
@@ -119,8 +119,8 @@ export const GalleryPage = observer(() => {
             <div className={styles.photoMeta}>
               <span>👁 {selectedPhoto.views}</span>
               <span>⬇ {selectedPhoto.downloads}</span>
-              {/* СКРЫТИЕ BASE64 ИЗ МОДАЛЬНОГО ОКНА */}
-              {selectedPhoto.copyright && !selectedPhoto.copyright.startsWith('data:image') && (
+              {/* Принудительно привели копирайт к типу String, чтобыstarts-with не ломал компиляцию */}
+              {selectedPhoto.copyright && !String(selectedPhoto.copyright).startsWith('data:image') && (
                 <span>© {selectedPhoto.copyright}</span>
               )}
             </div>
@@ -146,9 +146,9 @@ export const GalleryPage = observer(() => {
                 <div className={styles.photoStats}>
                   <span>👁 {photo.views}</span>
                   <span>⬇ {photo.downloads}</span>
-                  {/* СКРЫТИЕ BASE64 ИЗ СПИСКА КАРТОЧЕК */}
-                  {photo.copyright && !photo.copyright.startsWith('data:image') && (
-                    <span className={styles.copyrightText}>© {photo.copyright}</span>
+                  {/* Принудительно привели копирайт к типу String, чтобы скрыть картинку base64 из карточки */}
+                  {photo.copyright && !String(photo.copyright).startsWith('data:image') && (
+                    <span>© {photo.copyright}</span>
                   )}
                 </div>
               </div>
@@ -160,5 +160,6 @@ export const GalleryPage = observer(() => {
     </div>
   );
 });
+
 
 });
