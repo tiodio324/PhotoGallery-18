@@ -7,7 +7,9 @@ export const Header = observer(() => {
   const { isAuthenticated, currentRole, logout, openLoginModal } = authStore;
   const { pageTitle, toggleMobileMenu, mobileMenuOpen, navigate } = navigationStore;
 
-  const getRoleName = (role: string): string => {
+  // Изменили тип аргумента на string | null | undefined, чтобы TypeScript был доволен
+  const getRoleName = (role: string | null | undefined): string => {
+    if (!role) return 'Фотограф';
     switch (role) {
       case 'admin': return 'Фотограф';
       case 'teacher': return 'Преподаватель';
@@ -52,6 +54,7 @@ export const Header = observer(() => {
       <div className={styles.right}>
         {isAuthenticated ? (
           <div className={styles.userInfo}>
+            {/* Теперь сюда безопасно передается currentRole */}
             <span className={styles.role}>{getRoleName(currentRole)}</span>
             <Button variant="ghost" size="sm" onClick={logout} className={styles.headerButton}>
               Выйти
