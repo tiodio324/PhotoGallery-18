@@ -12,6 +12,10 @@
   margin-top: $header-height;
   transition: margin-left $transition-smooth;
   background: $color-bg-secondary;
+     width: 100%;
+  flex-grow: 1; 
+  padding: 40px;
+}
 }
 
 .sidebarOpen {
