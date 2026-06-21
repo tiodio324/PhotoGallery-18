@@ -20,3 +20,29 @@
 .photoDescription { color: $color-text-secondary; margin: 0; }
 .photoMeta { display: flex; gap: 1rem; font-size: 0.9rem; color: $color-text-muted; }
 .downloadButton { padding: 0.75rem 1.5rem; background: $color-primary; color: white; border: none; border-radius: 0.5rem; cursor: pointer; font-weight: 500; }
+.downloadButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem; /* Отступ между стрелочкой и текстом */
+  padding: 8px 16px;
+  background-color: #2563eb;
+  color: #ffffff !important;
+  text-decoration: none !important;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: background-color 0.2s ease;
+  cursor: pointer;
+
+  &:hover {
+    background-color: #1d4ed8;
+  }
+}
+
+/* СТИЛИ ДЛЯ СТРЕЛОЧКИ */
+.downloadIcon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  display: block;
+}
