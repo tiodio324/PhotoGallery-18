@@ -3,6 +3,24 @@ import { dataStore, authStore, navigationStore } from '@/store';
 import { Card, Button, Badge } from '@/components/UI';
 import styles from './HomePage.module.scss';
 
+const getAlbumWord = (count: number) => {
+  const n = Math.abs(count) % 100;
+  const n1 = n % 10;
+  if (n > 10 && n < 20) return 'альбомов';
+  if (n1 > 1 && n1 < 5) return 'альбома';
+  if (n1 === 1) return 'альбом';
+  return 'альбомов';
+};
+ const getPhotoWord = (count: number) => {
+    const n = Math.abs(count) % 100;
+    const n1 = n % 10;
+    if (n > 10 && n < 20) return 'фотографий';
+    if (n1 > 1 && n1 < 5) return 'фотографии';
+    if (n1 === 1) return 'фотография';
+    return 'фотографий';
+  };
+
+
 const StatCard = ({ title, value, icon, color }: { title: string; value: number | string; icon: React.ReactNode; color: 'primary' | 'success' | 'warning' | 'info'; }) => (
   <Card className={`${styles.statCard} ${styles[color]}`}>
     <div className={styles.statIcon}>{icon}</div>
@@ -24,11 +42,10 @@ export const HomePage = observer(() => {
   // Считаем количество: для фотографа — все, для гостя — только публичные фотографии
   // @ts-ignore
   const displayedPhotosCount = isPhotographer 
-    ? activePhotos.length 
-    : activePhotos.filter(p => 
-        publicAlbums.some(a => a.id === p.albumId && a.isActive)
-      ).length;
- 
+       ? activePhotos.length 
+    : activePhotos.filter(p => publicAlbums.some(a => a.id === p.albumId)).length;
+
+
   return (
     <div className={styles.page}>
       <section className={styles.welcome}>
@@ -52,13 +69,22 @@ export const HomePage = observer(() => {
       </section>
 
       <section className={styles.stats}>
-        <StatCard title="Фотографий" value={photosLoading ? '...' : activePhotos.length} color="primary"
-          icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2" /><circle cx="8.5" cy="8.5" r="1.5" /><polyline points="21 15 16 10 5 21" /></svg>} />
-        <StatCard title="Альбомов" value={publicAlbums.length} color="info"
-          icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z" /></svg>} />
+        {/* Склонение для фотографий */}
+        <StatCard 
+          title={getPhotoWord(displayedPhotosCount)} 
+          value={photosLoading ? '...' : displayedPhotosCount} 
+          color="primary"
+          icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2" /><circle cx="8.5" cy="8.5" r="1.5" /><polyline points="21 15 16 10 5 21" /></svg>} 
+        />
+        {/* Склонение для альбомов */}
+        <StatCard 
+          title={getAlbumWord(publicAlbums.length)} 
+          value={publicAlbums.length} 
+          color="info"
+          icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z" /></svg>} 
+        />
         <StatCard title="Просмотров" value={totalViews.toLocaleString('ru-RU')} color="success"
           icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg>} />
-        
       </section>
 
       <section className={styles.quickActions}>
@@ -70,7 +96,10 @@ export const HomePage = observer(() => {
             </div>
             <h3>Галерея</h3>
             <p>Просмотр всех фотографий</p>
-            <Badge variant="primary">{activePhotos.length} фото</Badge>
+            {/* Склонение в бейдже галереи */}
+            <Badge variant="primary">
+              {photosLoading ? '...' : displayedPhotosCount} {getPhotoWord(displayedPhotosCount)}
+            </Badge>
           </Card>
 
           <Card className={styles.actionCard} hoverable onClick={() => navigate('albums')}>
@@ -79,7 +108,10 @@ export const HomePage = observer(() => {
             </div>
             <h3>Альбомы</h3>
             <p>Организованные коллекции</p>
-            <Badge variant="info">{publicAlbums.length} альбомов</Badge>
+            {/* Склонение в бейдже альбомов */}
+            <Badge variant="info">
+              {publicAlbums.length} {getAlbumWord(publicAlbums.length)}
+            </Badge>
           </Card>
 
           {isPhotographer && (
@@ -95,4 +127,4 @@ export const HomePage = observer(() => {
       </section>
     </div>
   );
-});
+  });
