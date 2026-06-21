@@ -3,10 +3,14 @@
 @use '@/styles/mixins' as *;
 
 // Photo-Gallery: Минималистичный галерейный brutalist стиль
+// .page {
+//   display: flex;
+//   flex-direction: column;
+//   gap: $spacing-2xl;
+// }
 .page {
-  display: flex;
-  flex-direction: column;
-  gap: $spacing-2xl;
+  width: 100%;
+  max-width: 100%; /* Убирает внутренние ограничения на главной */
 }
 
 .welcome {
