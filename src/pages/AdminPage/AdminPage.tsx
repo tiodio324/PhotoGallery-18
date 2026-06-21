@@ -115,13 +115,8 @@ export const AdminPage = observer(() => {
         let finalImageUrl = photoForm.imageUrl;
         let finalCopyright = photoForm.copyright;
 
-        // Накладываем водяной знак, только если горит галочка в форме
-        if (photoForm.watermark) {
-          // 1. Сохраняем чистый оригинал в скрытое поле copyright для фотографа
-          finalCopyright = photoForm.imageUrl;
-          // 2. Впечатываем текст (поменяйте 'ДЛЯ SITE.RU' на имя вашего бренда)
-          finalImageUrl = await applyWatermarkToDataUrl(photoForm.imageUrl, 'GALLERYGAL');
-        }
+        
+       
 
         const updatedFormData = { ...photoForm, imageUrl: finalImageUrl, copyright: finalCopyright };
 
