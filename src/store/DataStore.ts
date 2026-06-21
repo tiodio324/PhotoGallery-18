@@ -11,21 +11,34 @@ export class DataStore {
 
   constructor() { makeAutoObservable(this, {}, { autoBind: true }); }
 
-   get activePhotos(): Photo[] { 
-    // Если это фотограф, отдаем вообще все активные фото
+ get activePhotos(): Photo[] {
+    // 1. Если авторизован фотограф, возвращаем ВСЕ его активные фотографии (даже из приватных альбомов)
     if (authStore.isPhotographer) {
       return this.photos
         .filter(p => p.isActive)
         .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     }
     
-    // Если это гость, отдаем только те фото, чьи альбомы сейчас ПУБЛИЧНЫ и АКТИВНЫ
+    // 2. Если зашел гость, отдаем ТОЛЬКО те фотографии, которые привязаны к АКТИВНЫМ и ПУБЛИЧНЫМ альбомам
     return this.photos
       .filter(p => p.isActive && this.publicAlbums.some(a => a.id === p.albumId))
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   }
 
-  get publicAlbums(): Album[] { return this.albums.filter(a => a.isActive && a.isPublic).sort((a, b) => a.name.localeCompare(b.name, 'ru')); }
+  get publicAlbums(): Album[] {
+    // Если зашел фотограф, отдаем ему ВСЕ активные альбомы (включая приватные)
+    if (authStore.isPhotographer) {
+      return this.albums
+        .filter(a => a.isActive)
+        .sort((a, b) => a.name.localeCompare(b.name, 'ru'));
+    }
+
+    // Если зашел гость, отдаем строго только публичные альбомы
+    return this.albums
+      .filter(a => a.isActive && a.isPublic)
+      .sort((a, b) => a.name.localeCompare(b.name, 'ru'));
+  }
+
   get activeAlbums(): Album[] { return this.albums.filter(a => a.isActive).sort((a, b) => a.name.localeCompare(b.name, 'ru')); }
   
   get filteredPhotos(): Photo[] {
