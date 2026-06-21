@@ -131,9 +131,11 @@
 
 .actionCards {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: $spacing-md;
+  /* Карточки будут автоматически занимать одинаковое равное место: */
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); 
+  gap: 20px; /* или ваш $spacing */
 }
+
 
 .actionCard {
   display: flex;
