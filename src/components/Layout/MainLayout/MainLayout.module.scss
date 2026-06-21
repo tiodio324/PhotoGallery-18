@@ -3,12 +3,14 @@
 @use '@/styles/mixins' as *;
 
 .layout {
-  display: flex; /* Включаем флекс-режим, чтобы сайдбар и контент встали в один ряд */
+  display: flex;
   min-height: 100vh;
   background: $color-bg-secondary;
   width: 100%;
-  max-width: 1600px; /* Задаем максимальную ширину для всего сайта целиком */
-  margin: 0 auto;    /* Центрируем всю конструкцию (меню + контент) по центру экрана */
+  
+  /* Увеличиваем максимальную ширину всего сайта до 1920px (FullHD) */
+  max-width: 1920px; 
+  margin: 0 auto;    /* Центрирует всю конструкцию на огромных мониторах */
 }
 
 .main {
@@ -44,20 +46,9 @@
   @include container;
   width: 100%;
   
-  /* Увеличиваем максимальную ширину до 1400px или 1600px */
-  max-width: 1400px; 
-  margin: 0 auto; /* Центрирует широкую панель, если экран монитора огромный */
-  
-  padding-top: $spacing-lg;
-  padding-bottom: $spacing-2xl;
-  padding-left: 60px;
-  padding-right: 60px;
-  
-  @include mobile {
-    padding-top: $spacing-md;
-    padding-bottom: $spacing-xl;
-    padding-left: 20px;
-    padding-right: 20px;
-  }
+  /* Разрешаем контенту админа и гостя разворачиваться шире */
+  max-width: 1600px; 
+  margin: 0 auto;
+  padding: 40px;
 }
 
