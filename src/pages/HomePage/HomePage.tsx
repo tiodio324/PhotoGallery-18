@@ -15,6 +15,20 @@ export const HomePage = observer(() => {
   const { isPhotographer } = authStore;
   const { navigate } = navigationStore;
 
+  // ТЕПЕРЬ ПЕРЕМЕННАЯ НА СВОЕМ МЕСТЕ — ТУТ ЕЙ ДОСТУПНЫ ВСЕ ДАННЫЕ
+  // @ts-ignore
+    const publicPhotos = activePhotos.filter(photo => 
+    publicAlbums.some(album => album.id === photo.albumId)
+  );
+
+  // Считаем количество: для фотографа — все, для гостя — только публичные фотографии
+  // @ts-ignore
+  const displayedPhotosCount = isPhotographer 
+    ? activePhotos.length 
+    : activePhotos.filter(p => 
+        publicAlbums.some(a => a.id === p.albumId && a.isActive)
+      ).length;
+ 
   return (
     <div className={styles.page}>
       <section className={styles.welcome}>
