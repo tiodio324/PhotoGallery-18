@@ -19,7 +19,7 @@
 .photoImage { width: 100%; max-height: 600px; object-fit: contain; border-radius: 0.5rem; }
 .photoDescription { color: $color-text-secondary; margin: 0; }
 .photoMeta { display: flex; gap: 1rem; font-size: 0.9rem; color: $color-text-muted; }
-.downloadButton { padding: 0.75rem 1.5rem; background: $color-primary; color: white; border: none; border-radius: 0.5rem; cursor: pointer; font-weight: 500; }
+
 .downloadButton {
   display: inline-flex;
   align-items: center;
