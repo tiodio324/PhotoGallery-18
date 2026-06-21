@@ -11,7 +11,20 @@ export class DataStore {
 
   constructor() { makeAutoObservable(this, {}, { autoBind: true }); }
 
-  get activePhotos(): Photo[] { return this.photos.filter(p => p.isActive).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()); }
+   get activePhotos(): Photo[] { 
+    // Если это фотограф, отдаем вообще все активные фото
+    if (authStore.isPhotographer) {
+      return this.photos
+        .filter(p => p.isActive)
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    }
+    
+    // Если это гость, отдаем только те фото, чьи альбомы сейчас ПУБЛИЧНЫ и АКТИВНЫ
+    return this.photos
+      .filter(p => p.isActive && this.publicAlbums.some(a => a.id === p.albumId))
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  }
+
   get publicAlbums(): Album[] { return this.albums.filter(a => a.isActive && a.isPublic).sort((a, b) => a.name.localeCompare(b.name, 'ru')); }
   get activeAlbums(): Album[] { return this.albums.filter(a => a.isActive).sort((a, b) => a.name.localeCompare(b.name, 'ru')); }
   
