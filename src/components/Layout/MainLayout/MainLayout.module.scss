@@ -3,8 +3,12 @@
 @use '@/styles/mixins' as *;
 
 .layout {
+  display: flex; /* Включаем флекс-режим, чтобы сайдбар и контент встали в один ряд */
   min-height: 100vh;
   background: $color-bg-secondary;
+  width: 100%;
+  max-width: 1600px; /* Задаем максимальную ширину для всего сайта целиком */
+  margin: 0 auto;    /* Центрируем всю конструкцию (меню + контент) по центру экрана */
 }
 
 .main {
@@ -12,11 +16,10 @@
   margin-top: $header-height;
   transition: margin-left $transition-smooth;
   background: $color-bg-secondary;
-     width: 100%;
+  width: 100%;
   flex-grow: 1; 
   padding: 40px;
 }
-
 
 .sidebarOpen {
   margin-left: $sidebar-width;
@@ -34,10 +37,16 @@
   }
 }
 
+/* Очистили от двойной вложенности и задали правильное выравнивание */
 .content {
   @include container;
+  width: 100%;
+  max-width: 1400px;  /* Разворачиваем белые карточки шире */
+  margin: 0 auto;      /* Центрируем их внутри правой области */
   padding-top: $spacing-lg;
   padding-bottom: $spacing-2xl;
+  padding-left: 20px;
+  padding-right: 20px;
   
   @include mobile {
     padding-top: $spacing-md;
