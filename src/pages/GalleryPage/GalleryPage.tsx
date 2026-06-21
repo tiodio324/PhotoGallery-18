@@ -114,7 +114,7 @@ export const GalleryPage = observer(() => {
             {selectedPhoto.description && <p className={styles.photoDescription}>{selectedPhoto.description}</p>}
             <div className={styles.photoMeta}>
               <span>👁 {selectedPhoto.views}</span>
-              <span>⬇ {selectedPhoto.downloads}</span>
+              
               {selectedPhoto.copyright && !String(selectedPhoto.copyright).startsWith('data:image') && (
                 <span>© {selectedPhoto.copyright}</span>
               )}
