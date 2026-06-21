@@ -140,7 +140,7 @@ export const GalleryPage = observer(() => {
                 {getAlbumById(photo.albumId) && <Badge variant="info">{getAlbumById(photo.albumId)?.name}</Badge>}
                 <div className={styles.photoStats}>
                   <span>👁 {photo.views}</span>
-                  <span>⬇ {photo.downloads}</span>
+                  
                   {photo.copyright && !String(photo.copyright).startsWith('data:image') && (
                     <span>© {photo.copyright}</span>
                   )}
